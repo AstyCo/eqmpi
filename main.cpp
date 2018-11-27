@@ -11,9 +11,20 @@ typedef unsigned int uint;
 
 #ifdef FLOAT_P
 typedef float real;
+#   ifndef MPI_TYPE_REAL
+#       define MPI_TYPE_REAL MPI_FLOAT
+#   endif
 #else
 typedef double real;
+#   ifndef MPI_TYPE_REAL
+#       define MPI_TYPE_REAL MPI_FLOAT
+#   endif
 #endif;
+
+enum MPI_SENDRECV_TAGS
+{
+    TAG_BOUNDARY_ELEMENTS
+};
 
 real phi(real x, real y, real /*z*/)
 {
@@ -103,6 +114,9 @@ ConnectionDirection toCD(int i)
 struct Iterations
 {
     typedef std::vector<real> RealVector;
+    typedef void (Iterations::*CopyMFuncPtr)(RealVector &, uint, uint, uint);
+    typedef void (Iterations::*IndexesMFuncPtr)(uint, uint, uint);
+
 
     static uint K; // time step count
     static real T;
@@ -154,7 +168,6 @@ struct Iterations
         case DIR_X:
         case DIR_MINUS_X:
             return jc * kc;
-
         case DIR_Y:
         case DIR_MINUS_Y:
             return jc * kc;
@@ -175,8 +188,7 @@ struct Iterations
         };
 
         std::vector<MPI_Request> v;
-        std::vector<RealVector> vsend;
-        std::vector<RealVector> vrecv;
+        std::vector<RealVector> buff;
         std::vector<Info> iv;
 
         void append(ConnectionDirection cdir, uint sz)
@@ -185,15 +197,16 @@ struct Iterations
             i.dir = cdir;
 
             iv.push_back(i);
+
             v.push_back(MPI_Request);
-            vsend.push_back(RealVector());
-            vsend.back().reserve(sz);
-            vrecv.push_back(RealVector());
-            vrecv.back().reserve(sz);
+
+            buff.push_back(RealVector());
+            buff.back().reserve(sz);
         }
     };
 
-    Requests requests;
+    Requests recv_requests;
+    Requests send_requests;
 
 
     Iterations(const ComputeNode &n)
@@ -240,20 +253,29 @@ struct Iterations
         }
     }
 
-    void recv_data(uint id)
+    void copy_recv(RealVector &v, uint i, uint j, uint k)
+    {
+        arrayP[get_p_index(i, j, k)] = v[j * kc + k];
+    }
+
+    void copy_send(RealVector &v, uint i, uint j, uint k)
+    {
+        v[j * kc + k] = arrayP[get_p_index(i, j, k)];
+    }
+
+    void copy_data(uint id, CopyMFuncPtr f)
     {
         ConnectionDirection = requests.iv[id].dir;
-        const RealVector &v = requests.v[id];
+        RealVector &v = requests.v[id];
         switch (cdir) {
         case DIR_X:
         case DIR_MINUS_X:
-            uint i_offset = ((cdir == DIR_X)
+            uint i = ((cdir == DIR_X)
                         ? ic - 1
                         : 0);
             for (uint j = 0; j < jc; ++j) {
                 for (uint k = 0; k < kc; ++k) {
-                    arrayP[get_p_index(i, j, k)]
-                            = v[j * kc + k];
+                    this->*f(v, i, j, k);
                 }
 
             }
@@ -294,16 +316,16 @@ struct Iterations
                 + array[get_index(i,j,k+1)]) / hz / hz
                 );
     }
-//    void it_for_each(IndexesFunction &func)
-//    {
-//        for (uint i = 0; i < ic; ++i) {
-//            for (uint j = 0; j < jc; ++j) {
-//                for (uint k = 0; k < kc; ++k) {
-//                    func(i, j, k);
-//                }
-//            }
-//        }
-//    }
+   void it_for_each(IndexesMFuncPtr func)
+   {
+       for (uint i = 0; i < ic; ++i) {
+           for (uint j = 0; j < jc; ++j) {
+               for (uint k = 0; k < kc; ++k) {
+                   this->*func(i, j, k);
+               }
+           }
+       }
+   }
 
     void next_step()
     {
@@ -323,6 +345,33 @@ struct Iterations
         return ((i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
     }
 
+    real x(uint i) const { return (i0 + i) * hx;}
+    real y(uint j) const { return (j0 + j) * hy;}
+    real z(uint k) const { return (k0 + k) * hz;}
+
+    void set_0th(uint i, uint j, uint k)
+    {
+        uint index = get_index(i, j, k);
+        arrayPP[index] = phi(x(i), y(j), z(k));
+    }
+
+
+    void step0()
+    {
+        it_for_each(set_0th);
+    }
+
+    void set_1th(uint i, uint j, uint k)
+    {
+        uint index = get_index(i, j, k);
+        arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
+    }
+
+    void step1()
+    {
+        it_for_each(set_1th)
+    }
+
 };
 
 
@@ -337,43 +386,51 @@ int main(int argc, char *argv[])
     its.step1();
 
     // STEPS
-    // async receive prev
-#   pragma omp parallel for // parallel slices
-    for (uint i = 1; i < its.ic - 1; ++i) {
-        for (uint j = 1; j < its.jc - 1; ++j) {
-            for (uint k = 1; k < its.kc -1; ++k) {
-                its.calculate(i, j, k);
-            }
-        }
-    }
-    // sync recv prev
-    int request_index;
-    MPI_Status status;
-#   pragma omp parallel // parallel recv
-    {
-        while (MPI_UNDEFINED != MPI_Waitany(its.requests.v.data(),
-                                            its.requests.v.size(),
-                                            &request_index, &status)) {
-            const Iterations::Requests::Info &info
-                    = its.requests.iv[request_index];
-            its.recv_data(request_index);
-            its.calculate(info.dir);
-        }
-    }
-
-    if (cnode.left_rank() != -1) {
-        MPI_Isend
-    }
-#   pragma omp parallel for // parallel slices
-    for (uint i = 0; i < its.ic; ++i) {
-        for (uint j = 0; j < its.jc; ++j) {
-            for (uint k = 0; k < its.kc; ++k) {
-                if (its.is_border(i, j, k)) {
-
+    for (uint step = 0; step < its.K; ++step) {
+        // async receive prev
+#       pragma omp parallel for // parallel slices
+        for (uint i = 1; i < its.ic - 1; ++i) {
+            for (uint j = 1; j < its.jc - 1; ++j) {
+                for (uint k = 1; k < its.kc -1; ++k) {
+                    its.calculate(i, j, k);
                 }
-                its.calculate(i, j, k);
             }
         }
-    }
+        // sync recv prev
+        int request_index;
+        MPI_Status status;
+#       pragma omp parallel // parallel recv
+        {
+            const Iterations::Requests &requests = its.recv_requests;
+            while (MPI_UNDEFINED != MPI_Waitany(requests.v.data(),
+                                                requests.v.size(),
+                                                &request_index, &status)) {
+                const Iterations::Requests::Info &info
+                        = requests.iv[request_index];
+                its.recv_data(request_index);
+                its.calculate(info.dir);
+            }
+        }
+        its.calculate_angle_values();
+        its.next_step(); // update arrays
+        // async send prev
+        {
+            const Iterations::Requests &requests = its.send_requests;
+            MPI_Waitall(requests.v.data(),
+                        requests.v.size(),
+                        &status); // wait for every asynchronous send (so we can use send buffers again)
+            // asynchronous send to every neighbor processor
+            for (uint i = 0; i < requests.size(); ++i) {
+                its.copy_data(i, &Iterations::Requests::copy_send)
+                MPI_Isend(requests.buff[i].data(),
+                          requests.buff[i].size(),
+                          MPI_TYPE_REAL,
+                          cnode.neighbor(requests.iv[i].dir),
+                          TAG_BOUNDARY_ELEMENTS,
+                          MPI_COMM_WORLD,
+                          &requests.v[i]);
+            }
+        }
+    } // ENDS STEPS
     return 0;
 }
