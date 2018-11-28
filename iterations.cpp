@@ -15,9 +15,83 @@ void Requests::append(ConnectionDirection cdir, uint sz)
 }
 
 Iterations::Iterations(const ComputeNode &n)
+	: step(-1)
 {
     fill(n);
 }
+
+void prepare()
+{
+	step0();
+	step1();
+}
+
+
+void run()
+{
+	MY_ASSERT(step == 1);
+	// STEPS
+    for (; step < K; ++step) {
+        // async receive prev
+        {
+            const Requests &requests = recv_requests;
+            // asynchronous recv from every neighbor processor
+            for (uint i = 0; i < requests.size(); ++i) {
+                MPI_Irecv(requests.buff[i].data(),
+                          requests.buff[i].size(),
+                          MPI_TYPE_REAL,
+                          cnode.neighbor(requests.iv[i].dir),
+                          TAG_BOUNDARY_ELEMENTS,
+                          MPI_COMM_WORLD,
+                          &requests.v[i]);
+            }
+        }
+#       pragma omp parallel for // parallel slices
+        for (uint i = 1; i < ic - 1; ++i) {
+            for (uint j = 1; j < jc - 1; ++j) {
+                for (uint k = 1; k < kc -1; ++k) {
+                    calculate(i, j, k);
+                }
+            }
+        }
+        // sync recv prev
+        int request_index;
+        MPI_Status status;
+#       pragma omp parallel // parallel recv
+        {
+            const Iterations::Requests &requests = recv_requests;
+            while (MPI_UNDEFINED != MPI_Waitany(requests.v.data(),
+                                                requests.v.size(),
+                                                &request_index, &status)) {
+                const Iterations::Requests::Info &info
+                        = requests.iv[request_index];
+                copy_data(request_index, &Iterations::Requests::copy_recv)
+                calculate(info.dir);
+            }
+        }
+        calculate_angle_values();
+        next_step(); // update arrays
+        // async send prev
+        {
+            const Requests &requests = send_requests;
+            MPI_Waitall(requests.v.data(),
+                        requests.v.size(),
+                        &status); // wait for every asynchronous send (so we can use send buffers again)
+            // asynchronous send to every neighbor processor
+            for (uint i = 0; i < requests.size(); ++i) {
+                copy_data(i, &Iterations::Requests::copy_send)
+                MPI_Isend(requests.buff[i].data(),
+                          requests.buff[i].size(),
+                          MPI_TYPE_REAL,
+                          cnode.neighbor(requests.iv[i].dir),
+                          TAG_BOUNDARY_ELEMENTS,
+                          MPI_COMM_WORLD,
+                          &requests.v[i]);
+            }
+        }
+    } // ENDS STEPS
+}
+
 
 uint Iterations::dir_size(ConnectionDirection cdir)
 {
@@ -177,16 +251,20 @@ void Iterations::set_0th(uint i, uint j, uint k)
 
 void Iterations::step0()
 {
+	MY_ASSERT(step < 0);
     it_for_each(set_0th);
+    step = 0;
 }
 
 void Iterations::set_1th(uint i, uint j, uint k)
-	{
-	uint index = get_index(i, j, k);
-	arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
-	}
+{
+uint index = get_index(i, j, k);
+arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
+}
 
 void Iterations::step1()
 {
-    it_for_each(set_1th)
+	MY_ASSERT(step == 0);
+    it_for_each(set_1th);
+    step = 1;
 }

@@ -24,11 +24,11 @@ struct Iterations
     };
 
 
-    static uint K; // time step count
-    static real T;
-    static real Lx;
-    static real Ly;
-    static real Lz;
+    static uint K = 20; // time step count
+    static real T = 10;
+    static real Lx = 10;
+    static real Ly = 20;
+    static real Lz = 30;
 
     const uint i0;
     const uint j0;
@@ -71,8 +71,15 @@ struct Iterations
     Requests recv_requests;
     Requests send_requests;
 
+    int step;
+
 
     Iterations(const ComputeNode &n);
+
+    void prepare();
+    void run();
+
+
     uint dir_size(ConnectionDirection cdir);
 
     void fill(const ComputeNode &n);

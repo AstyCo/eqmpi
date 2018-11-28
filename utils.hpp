@@ -9,7 +9,6 @@ struct ComputeNode
     struct MPI_data
     {
         uint rank;
-//        uint commSize;
         uint procCount;
     } mpi;
 
@@ -23,9 +22,12 @@ struct ComputeNode
     ComputeNode();
     ~ComputeNode();
 
-    int neighbor(ConnectionDirection cdir);
+    int neighbor(ConnectionDirection cdir) const;
+    bool is(ConnectionDirection cdir) const;
     void fillGridDimensions();
     void fillXYZ();
+
+    int toRank(uint i, uint j, uint k) const;
 };
 
 
