@@ -1,6 +1,5 @@
 #include "iterations.hpp"
 
-
 void Requests::append(ConnectionDirection cdir, uint sz)
 {
     Info i;
@@ -195,6 +194,25 @@ void Iterations::calculate(ConnectionDirection cdir)
     }
 }
 
+void calculate_edge_values()
+{
+    for (uint i = 0; i < ic; ++i) {
+        calculate(i, 0, 0);
+        calculate(i, jc - 1, kc - 1);
+    }
+    for (uint j = 0; j < jc; ++j) {
+        calculate(0, j, 0);
+        calculate(ic - 1, j, kc - 1);
+    }
+    for (uint k = 0; k < kc; ++k) {
+        calculate(0, 0, k);
+        calculate(ic - 1, jc - 1, k);
+    }
+
+
+}
+
+
 void Iterations::calculate(uint i, uint j, uint k)
 {
     uint index = get_index(i, j, k);
@@ -258,8 +276,8 @@ void Iterations::step0()
 
 void Iterations::set_1th(uint i, uint j, uint k)
 {
-uint index = get_index(i, j, k);
-arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
+    uint index = get_index(i, j, k);
+    arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
 }
 
 void Iterations::step1()

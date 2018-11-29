@@ -1,5 +1,11 @@
 #include "globals.hpp"
 
+void Asserter(const char *file, int line)
+{
+    std::cerr << "ASSERT at FILE:" << file << " LINE:"<< line << std::endl;
+    exit(1);
+}
+
 MapGridDimensions getGridDimensions()
 {
     MapGridDimensions mts;

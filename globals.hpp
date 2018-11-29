@@ -3,8 +3,14 @@
 
 #include <mpi.h> // global include mpi just becouse we can
 
+#include <unordered_map>
+
+#include <cmath>
+
 #define SH(x) sinh(x) // different floating point precision *hf, *h, *hl
 #define CH(x) cosh(x) // different floating point precision *hf, *h, *hl
+
+#define MY_ASSERT(x) if (!(x)) Asserter(__FILE__, __LINE__);
 
 typedef unsigned int uint;
 
@@ -18,23 +24,26 @@ typedef double real;
 #   ifndef MPI_TYPE_REAL
 #       define MPI_TYPE_REAL MPI_FLOAT
 #   endif
-#endif;
+#endif
 
 enum MPI_SENDRECV_TAGS
 {
     TAG_BOUNDARY_ELEMENTS
 };
 
-real phi(real x, real y, real /*z*/)
+
+void Asserter(const char *file, int line);
+
+inline real phi(real x, real y, real z)
 {
-    return SH(x) + CH(y);
+    return sin(x) * SH(y - M_PI) * sin(z);
 }
 
 // Δ = div grad
 // Δ phi = (d/dx^2 + d/dy^2 + d/dz^2) phi
-real div_grad_phi(real x, real y, real /*z*/)
+inline real div_grad_phi(real x, real y, real z)
 {
-    return SH(x) + CH(y); // sh(x)' = ch(x), ch(x)' = sh(x)
+    return -phi(x, y, z); // sh(x)' = ch(x), ch(x)' = sh(x)
 }
 
 struct GridDimensions

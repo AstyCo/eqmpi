@@ -88,8 +88,9 @@ struct Iterations
     void copy_send(RealVector &v, uint i, uint j, uint k);
 
     void copy_data(uint id, CopyMFuncPtr f);
-    void calculate(ConnectionDirection cdir);
     void calculate(uint i, uint j, uint k);
+    void calculate(ConnectionDirection cdir);
+    void calculate_edge_values();
    	void it_for_each(IndexesMFuncPtr func);
     void next_step();
 
