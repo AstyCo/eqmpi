@@ -33,24 +33,14 @@ struct CommandLineArgs
     int argc;
     char **argv;
 
-    bool test;
-    uint ngpu;
-    int matrix_size;
-    int iter_count;
-    int one_gpu_iter_count;
-    int pinned_iter_count;
-    long long nrun;
+    uint K;
+    uint N;
 
     CommandLineArgs()
     {
         // default
-        test = false;
-        ngpu = 2;
-        matrix_size = -1;
-        iter_count = 20;
-        one_gpu_iter_count = iter_count / 2;
-        pinned_iter_count = one_gpu_iter_count / 2;
-        nrun = static_cast<long long>(-1);
+        K = 20;
+        N = 50;
     }
 
     void parse(int argc_, char **argv_);

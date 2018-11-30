@@ -2,8 +2,8 @@
 
 int main(int argc, char **argv)
 {
+    std::cout << "MAIN" << std::endl;
     clargs.parse(argc, argv);
-
     // ComputeNode RAII MPI resources (MPI_Initialize, MPI_Finalize)
     ComputeNode cnode; // rank, size
 

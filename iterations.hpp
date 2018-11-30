@@ -27,7 +27,6 @@ struct Iterations
     };
 
 
-    static uint K; // time step count
     static real T;
     static real Lx;
     static real Ly;

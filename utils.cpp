@@ -22,8 +22,10 @@ double randomize(double min, double max)
 
 ComputeNode::ComputeNode()
 {
+    std::cout << "DEBUG: ComputeNode\n";
     // Initialize the MPI environment
     MPI_Init(&clargs.argc, &clargs.argv);
+
 #ifdef WITH_OMP
     omp_set_num_threads(3); // set the number of threads for this programm
     omp_set_dynamic(0); // allways use maximum number of threads (not less)
@@ -38,10 +40,12 @@ ComputeNode::ComputeNode()
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
     mpi.rank = world_rank;
-    mpi.procCount = world_rank;
+    mpi.procCount = world_size;
 
     fillGridDimensions();
     fillXYZ();
+
+    std::cout << "DEBUG: ComputeNode +\n";
 }
 
 ComputeNode::~ComputeNode()
@@ -198,35 +202,23 @@ void CommandLineArgs::parse(int argc_, char **argv_)
 
 void CommandLineArgs::parseArg(char arg[])
 {
-    const char s_test [] = "test";
-    const char s_ngpu [] = "ngpu=";
-    const char s_msize[] = "msize=";
-    const char s_niter[] = "niter=";
+    const char s_K [] = "K=";
+    const char s_N [] = "N=";
 
     std::string sarg(arg);
-    if (sarg == s_test) {
-        test = true;
-        return;
-    }
-    if (sarg.find(s_ngpu) != std::string::npos) {
-        long tmp = strtol(sarg.c_str() + sizeof(s_ngpu) - 1,
+    if (sarg.find(s_K) != std::string::npos) {
+        long tmp = strtol(sarg.c_str() + sizeof(s_K) - 1,
                          NULL, 10);
-        if (tmp >= 1 && tmp <= 2)
-            ngpu = tmp;
+        K = tmp;
         return;
     }
-    if (sarg.find(s_msize) != std::string::npos) {
-        long tmp = strtol(sarg.c_str() + sizeof(s_msize) - 1,
+    if (sarg.find(s_N) != std::string::npos) {
+        long tmp = strtol(sarg.c_str() + sizeof(s_N) - 1,
                          NULL, 10);
-        matrix_size = tmp;
+        N = tmp;
         return;
     }
-    if (sarg.find(s_niter) != std::string::npos) {
-        long tmp = strtol(sarg.c_str() + sizeof(s_niter) - 1,
-                         NULL, 10);
-        iter_count = tmp;
-        return;
-    }
+
     std::cout << "unrecognized argument " << sarg << std::endl;
 }
 

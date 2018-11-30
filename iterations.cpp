@@ -1,6 +1,5 @@
 #include "iterations.hpp"
 
-uint Iterations::K = 20; // time step count
 real Iterations::T = 10;
 real Iterations::Lx = 2 * M_PI;
 real Iterations::Ly = 2 * M_PI;
@@ -19,16 +18,21 @@ void Iterations::Requests::append(ConnectionDirection cdir, uint sz)
     buff.back().reserve(sz);
 }
 
-Iterations::Iterations(const CuteNode &n)
+Iterations::Iterations(const ComputeNode &n)
     : step(-1), cnode(n)
 {
+    std::cout << "DEBUG: Iterations" << std::endl;
     fill(n);
+    std::cout << "DEBUG: Iterations filled" << std::endl;
 }
 
 void Iterations::prepare()
 {
+    std::cout << "DEBUG: Iterations prepare" << std::endl;
 	step0();
+    std::cout << "DEBUG: Iterations step0" << std::endl;
 	step1();
+    std::cout << "DEBUG: Iterations step1" << std::endl;
 }
 
 
@@ -36,7 +40,7 @@ void Iterations::run()
 {
 	MY_ASSERT(step == 1);
 	// STEPS
-    for (; step < K + 1; ++step) {
+    for (; step < clargs.K + 1; ++step) {
         // async receive prev
         {
             Requests &requests = recv_requests;
@@ -128,9 +132,9 @@ void Iterations::fill(const ComputeNode &n)
     MY_ASSERT(0 == n.mpi.procCount % n.gridDimensions.y);
     MY_ASSERT(0 == n.mpi.procCount % n.gridDimensions.z);
 
-    ic = n.mpi.procCount / n.gridDimensions.x;
-    jc = n.mpi.procCount / n.gridDimensions.y;
-    kc = n.mpi.procCount / n.gridDimensions.z;
+    ic = clargs.N / n.gridDimensions.x;
+    jc = clargs.N / n.gridDimensions.y;
+    kc = clargs.N / n.gridDimensions.z;
 
     i0 = n.x * ic;
     j0 = n.y * jc;
@@ -144,7 +148,7 @@ void Iterations::fill(const ComputeNode &n)
     hy = Ly / jc;
     hz = Lz / kc;
 
-    ht = T / K;
+    ht = T / clargs.K;
 
     size = ic * jc * kc;
     bigsize = (ic + 2) * (jc + 2) * (kc + 2);

@@ -4,6 +4,7 @@
 #include <mpi.h> // global include mpi just becouse we can
 
 #include <map>
+#include <iostream>
 
 #include <cmath>
 

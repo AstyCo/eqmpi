@@ -1,6 +1,6 @@
 CC=mpixlcxx_r
 EXTRAS_CFLAGS=-qarch=450d -qtune=450
-CFLAGS=-O3 -qsmp=omp -qstrict
+CFLAGS=-O3 -qsmp=omp -qstrict $(EXTRAS_CFLAGS)
 INC=
 INC_PARAMS=$(foreach d, $(INC), -I$d)
 LDFLAGS=-lm
@@ -9,11 +9,11 @@ OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=t2
 ARGUMENTS=
 
-one:
-	$(CC) $(CFLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
 
 all: $(SOURCES) $(EXECUTABLE)
 	
+one:
+	$(CC) $(CFLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
 clean: 
 	rm -rf *.o
 	
@@ -26,7 +26,8 @@ bsub_polus:
 	bsub <bsub_args
 	
 submit_bluegene:
-	# TODO
+	mpisubmit.bg -n 32 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	
 run:
 	$(EXECUTABLE) $(ARGUMENTS)
     
