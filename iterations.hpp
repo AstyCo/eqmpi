@@ -73,11 +73,9 @@ struct Iterations
     Requests recv_requests;
     Requests send_requests;
 
-    int step;
+    int next_step;
 
-    const ComputeNode &cnode;
-
-    Iterations(const ComputeNode &n);
+    Iterations();
 
     void prepare();
     void run();
@@ -95,7 +93,7 @@ struct Iterations
     void calculate(ConnectionDirection cdir);
     void calculate_edge_values();
    	void it_for_each(IndexesMFuncPtr func);
-    void next_step();
+    void shift_arrays();
 
     uint get_index(uint i, uint j, uint k) const;
 

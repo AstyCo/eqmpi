@@ -9,6 +9,7 @@
 #include <cstring>
 
 CommandLineArgs clargs;
+ComputeNode cnode;
 
 void initialize_seed()
 {
@@ -20,12 +21,8 @@ double randomize(double min, double max)
     return min + (static_cast<double>(rand()) / RAND_MAX) * (max - min);
 }
 
-ComputeNode::ComputeNode()
+void ComputeNode::init()
 {
-    std::cout << "DEBUG: ComputeNode\n";
-    // Initialize the MPI environment
-    MPI_Init(&clargs.argc, &clargs.argv);
-
 #ifdef WITH_OMP
     omp_set_num_threads(3); // set the number of threads for this programm
     omp_set_dynamic(0); // allways use maximum number of threads (not less)
@@ -45,13 +42,7 @@ ComputeNode::ComputeNode()
     fillGridDimensions();
     fillXYZ();
 
-    std::cout << "DEBUG: ComputeNode +\n";
-}
-
-ComputeNode::~ComputeNode()
-{
-	// Finalize the MPI environment.
-    MPI_Finalize();
+    cnode.print("DEBUG: ComputeNode +");
 }
 
 int ComputeNode::neighbor(ConnectionDirection cdir) const
@@ -82,10 +73,10 @@ void ComputeNode::fillGridDimensions()
 
 void ComputeNode::fillXYZ()
 {
-    x = mpi.rank % gridDimensions.x;
-    uint yzRank = mpi.rank / gridDimensions.x;
-    y = yzRank % gridDimensions.y;
-    z = yzRank / gridDimensions.y;
+    z = mpi.rank % gridDimensions.z;
+    uint yxRank = mpi.rank / gridDimensions.z;
+    y = yxRank % gridDimensions.y;
+    x = yxRank / gridDimensions.y;
 }
 
 int ComputeNode::toRank(uint i, uint j, uint k) const
@@ -95,8 +86,23 @@ int ComputeNode::toRank(uint i, uint j, uint k) const
 		|| k >= gridDimensions.z) {
 		return -1;
 	}
-	return (i * gridDimensions.y + j) * gridDimensions.z + k;
+    return (i * gridDimensions.y + j) * gridDimensions.z + k;
 
+}
+
+void ComputeNode::print(const std::string &str) const
+{
+    std::cout << titledStr(str);
+}
+
+void ComputeNode::error(const std::string &err) const
+{
+    std::cerr << titledStr(err);
+}
+
+std::string ComputeNode::titledStr(const std::string &str) const
+{
+    return SSTR(mpi.rank << ": " << str << std::endl);
 }
 
 class ProfilerPrivate
@@ -148,7 +154,7 @@ public:
                  "WC: %lf s.\n",
                  _wall_clock_elapsed);
 
-        std::cout << buff << std::endl;
+        cnode.print(buff);
     }
 
     double time() const
@@ -219,6 +225,6 @@ void CommandLineArgs::parseArg(char arg[])
         return;
     }
 
-    std::cout << "unrecognized argument " << sarg << std::endl;
+    cnode.print(std::string("unrecognized argument ") + sarg);
 }
 

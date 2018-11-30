@@ -1,13 +1,14 @@
 #include "globals.hpp"
 
+#include "utils.hpp"
+
 #include <iostream>
 #include <sstream>
 
 void Asserter(const char *file, int line)
 {
-    std::stringstream ss;
-    ss << "ASSERT at FILE:" << file << " LINE:"<< line << std::endl;
-    std::cerr << ss.str();
+    cnode.error(SSTR("ASSERT at FILE:" << file
+                     << " LINE:"<< line << std::endl));
     exit(1);
 }
 

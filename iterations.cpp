@@ -12,40 +12,43 @@ void Iterations::Requests::append(ConnectionDirection cdir, uint sz)
 
     iv.push_back(i);
 
-    v.push_back(MPI_Request());
+    v.push_back(MPI_REQUEST_NULL);
 
     buff.push_back(RealVector());
-    buff.back().reserve(sz);
+    buff.back().resize(sz);
 }
 
-Iterations::Iterations(const ComputeNode &n)
-    : step(-1), cnode(n)
+Iterations::Iterations()
+    : next_step(0)
 {
-    std::cout << "DEBUG: Iterations" << std::endl;
-    fill(n);
-    std::cout << "DEBUG: Iterations filled" << std::endl;
+    cnode.print("DEBUG: Iterations");
+    fill(cnode);
+    cnode.print("DEBUG: Iterations filled");
 }
 
 void Iterations::prepare()
 {
-    std::cout << "DEBUG: Iterations prepare" << std::endl;
+    cnode.print("DEBUG: Iterations prepare");
 	step0();
-    std::cout << "DEBUG: Iterations step0" << std::endl;
+    cnode.print("DEBUG: Iterations step0");
 	step1();
-    std::cout << "DEBUG: Iterations step1" << std::endl;
+    cnode.print("DEBUG: Iterations step1");
 }
 
 
 void Iterations::run()
 {
-	MY_ASSERT(step == 1);
+    MY_ASSERT(next_step == 2);
 	// STEPS
-    for (; step < clargs.K + 1; ++step) {
+    bool first = true;
+    for (; next_step < clargs.K + 1; ++next_step) {
+        cnode.print(SSTR("STEP " << next_step));
         // async receive prev
-        {
+        if (!first) {
             Requests &requests = recv_requests;
             // asynchronous recv from every neighbor processor
             for (uint i = 0; i < requests.size(); ++i) {
+                cnode.print(SSTR("RECV FROM " << cnode.neighbor(requests.iv[i].dir)));
                 MPI_Irecv(requests.buff[i].data(),
                           requests.buff[i].size(),
                           MPI_TYPE_REAL,
@@ -73,28 +76,40 @@ void Iterations::run()
             int request_index;
             MPI_Status status;
             Iterations::Requests &requests = recv_requests;
-            while (MPI_UNDEFINED != MPI_Waitany(requests.v.size(),
-                                                requests.v.data(),
-                                                &request_index,
-                                                &status)) {
+            cnode.print("MPI_Waitany");
+            while (MPI_Waitany(requests.v.size(),
+                               requests.v.data(),
+                               &request_index,
+                               &status)) {
+                if (request_index == MPI_UNDEFINED)
+                    break;
+
+                cnode.print(SSTR("MESSAGE FROM " << cnode.neighbor(requests.iv[request_index].dir)));
                 const Iterations::Requests::Info &info
                         = requests.iv[request_index];
+                cnode.print("index+");
                 copy_data(requests, request_index, &Iterations::copy_recv);
+                cnode.print("copy_recv+");
                 calculate(info.dir);
             }
         }
         calculate_edge_values();
-        next_step(); // update arrays
+        shift_arrays(); // update arrays
         // async send prev
-        {
+        if (next_step != clargs.K) {
             MPI_Status status;
             Requests &requests = send_requests;
+
+            cnode.print("MPI_Waitall");
             MPI_Waitall(requests.v.size(),
                         requests.v.data(),
                         &status); // wait for every asynchronous send (so we can use send buffers again)
             // asynchronous send to every neighbor processor
             for (uint i = 0; i < requests.size(); ++i) {
+                cnode.print(SSTR("SEND TO " << cnode.neighbor(requests.iv[i].dir)));
                 copy_data(requests, i, &Iterations::copy_send);
+                cnode.print("copy_send+");
+
                 MPI_Isend(requests.buff[i].data(),
                           requests.buff[i].size(),
                           MPI_TYPE_REAL,
@@ -104,6 +119,7 @@ void Iterations::run()
                           &requests.v[i]);
             }
         }
+        first = false;
     } // ENDS STEPS
 }
 
@@ -136,6 +152,11 @@ void Iterations::fill(const ComputeNode &n)
     jc = clargs.N / n.gridDimensions.y;
     kc = clargs.N / n.gridDimensions.z;
 
+    // TODO
+    MY_ASSERT(0 == clargs.N % n.gridDimensions.x);
+    MY_ASSERT(0 == clargs.N % n.gridDimensions.y);
+    MY_ASSERT(0 == clargs.N % n.gridDimensions.z);
+
     i0 = n.x * ic;
     j0 = n.y * jc;
     k0 = n.z * kc;
@@ -154,9 +175,9 @@ void Iterations::fill(const ComputeNode &n)
     bigsize = (ic + 2) * (jc + 2) * (kc + 2);
 
     // optimization (allocations may throw std::bad_alloc if no enough memory)
-    array.reserve(bigsize);
-    arrayP.reserve(bigsize);
-    arrayPP.reserve(bigsize);
+    array.resize(bigsize);
+    arrayP.resize(bigsize);
+    arrayPP.resize(bigsize);
 
     for (int i = 0; i < DIR_SIZE; ++i) {
         ConnectionDirection cdir = toCD(i);
@@ -165,6 +186,11 @@ void Iterations::fill(const ComputeNode &n)
             recv_requests.append(cdir, dir_size(cdir));
         }
     }
+    cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
+                     << " i0, j0, k0 (ic, jc, kc): "
+                     << i0 << ',' << j0 << ',' << k0
+                     << " (" << ic  << ',' << jc << ',' << kc << ")"
+                     << std::endl));
 }
 
 void Iterations::copy_recv(RealVector &v, uint i, uint j, uint k)
@@ -316,7 +342,7 @@ void Iterations::it_for_each(IndexesMFuncPtr func)
    }
 }
 
-void Iterations::next_step()
+void Iterations::shift_arrays()
 {
     // array -> arrayP, arrayP -> arrayPP
     memcpy(arrayPP.data(), arrayP.data(), arrayP.size() * sizeof(real));
@@ -343,9 +369,9 @@ void Iterations::set_0th(uint i, uint j, uint k)
 
 void Iterations::step0()
 {
-	MY_ASSERT(step < 0);
+    MY_ASSERT(next_step == 0);
     it_for_each(&Iterations::set_0th);
-    step = 0;
+    next_step = 1;
 }
 
 void Iterations::set_1th(uint i, uint j, uint k)
@@ -356,7 +382,7 @@ void Iterations::set_1th(uint i, uint j, uint k)
 
 void Iterations::step1()
 {
-	MY_ASSERT(step == 0);
+    MY_ASSERT(next_step == 1);
     it_for_each(&Iterations::set_1th);
-    step = 1;
+    next_step = 2;
 }

@@ -2,16 +2,19 @@
 
 int main(int argc, char **argv)
 {
-    std::cout << "MAIN" << std::endl;
-    clargs.parse(argc, argv);
-    // ComputeNode RAII MPI resources (MPI_Initialize, MPI_Finalize)
-    ComputeNode cnode; // rank, size
+    // Initialize the MPI environment
+    MPI_Init(&argc, &argv);
 
-    Iterations its(cnode); // iterations parameters, send/recv buffers
+    clargs.parse(argc, argv);
+
+    cnode.init(); // rank, size
+
+    Iterations its; // iterations parameters, send/recv buffers
 
     its.prepare();
     its.run();
 
-
+    // Finalize the MPI environment.
+    MPI_Finalize();
     return 0;
 }

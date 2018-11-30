@@ -40,7 +40,7 @@ struct CommandLineArgs
     {
         // default
         K = 20;
-        N = 50;
+        N = 64;
     }
 
     void parse(int argc_, char **argv_);
@@ -65,8 +65,7 @@ struct ComputeNode
     int y;
     int z;
 
-    ComputeNode();
-    ~ComputeNode();
+    void init();
 
     int neighbor(ConnectionDirection cdir) const;
     bool is(ConnectionDirection cdir) const;
@@ -74,7 +73,14 @@ struct ComputeNode
     void fillXYZ();
 
     int toRank(uint i, uint j, uint k) const;
+
+    void print(const std::string &str) const;
+    void error(const std::string &err) const;
+private:
+    std::string titledStr(const std::string &str) const;
 };
+
+extern ComputeNode cnode;
 
 
 #endif // UTILS_HPP

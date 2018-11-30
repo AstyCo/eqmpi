@@ -4,12 +4,17 @@
 #include <mpi.h> // global include mpi just becouse we can
 
 #include <map>
+
 #include <iostream>
+#include <sstream>
 
 #include <cmath>
 
 #define SH(x) sinh(x) // different floating point precision *hf, *h, *hl
 #define CH(x) cosh(x) // different floating point precision *hf, *h, *hl
+
+#define SSTR( x ) static_cast< std::ostringstream & >( \
+        ( std::ostringstream() << std::dec << x ) ).str()
 
 #define MY_ASSERT(x) if (!(x)) Asserter(__FILE__, __LINE__);
 
