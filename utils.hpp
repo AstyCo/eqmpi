@@ -30,6 +30,9 @@ private:
 
 struct CommandLineArgs
 {
+    int argc;
+    char *argv[];
+
     bool test;
     uint ngpu;
     int matrix_size;
@@ -50,9 +53,11 @@ struct CommandLineArgs
         nrun = static_cast<long long>(-1);
     }
 
-    void parse(int argc, char *argv[]);
+    void parse(int argc_, char *argv_[]);
     void parseArg(char arg[]);
 };
+
+extern CommandLineArgs clargs;
 
 struct ComputeNode
 {

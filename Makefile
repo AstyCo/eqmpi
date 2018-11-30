@@ -1,8 +1,8 @@
-CC=mpixlcxx
+CC=mpixlcxx_r
 CFLAGS=-O3 -qsmp=omp
 INC=
 INC_PARAMS=$(foreach d, $(INC), -I$d)
-LDFLAGS=
+LDFLAGS=-lm
 SOURCES=main.cpp utils.cpp globals.cpp iterations.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=t2

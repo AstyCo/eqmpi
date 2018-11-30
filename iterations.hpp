@@ -3,6 +3,8 @@
 
 #include "utils.hpp"
 
+#include <vector>
+
 struct Iterations
 {
     typedef std::vector<real> RealVector;
@@ -24,11 +26,11 @@ struct Iterations
     };
 
 
-    static uint K = 20; // time step count
-    static real T = 10;
-    static real Lx = 10;
-    static real Ly = 20;
-    static real Lz = 30;
+    static uint K; // time step count
+    static real T;
+    static real Lx;
+    static real Ly;
+    static real Lz;
 
     const uint i0;
     const uint j0;

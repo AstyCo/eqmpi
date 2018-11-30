@@ -8,6 +8,8 @@
 #include <ctime>
 #include <cstring>
 
+CommandLineArgs clargs;
+
 void initialize_seed()
 {
     srand(time(NULL));
@@ -20,9 +22,9 @@ double randomize(double min, double max)
 
 ComputeNode::ComputeNode()
 {
+	
     // Initialize the MPI environment
-    MPI_Init(NULL, NULL);
-
+    MPI_Init(argc, argv);
 	// Get the number of processes`
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -182,8 +184,10 @@ void Profiler::print() const
     _impl->print();
 }
 
-void CommandLineArgs::parse(int argc, char *argv[])
+void CommandLineArgs::parse(int argc_, char *argv_[])
 {
+	argc = argc_;
+	argv = argv_;
     for (int i = 1; i < argc; ++i)
         parseArg(argv[i]);
 }

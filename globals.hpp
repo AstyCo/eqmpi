@@ -3,7 +3,7 @@
 
 #include <mpi.h> // global include mpi just becouse we can
 
-#include <unordered_map>
+#include <map>
 
 #include <cmath>
 
@@ -57,7 +57,7 @@ struct GridDimensions
     {}
 };
 
-typedef std::unordered_map<uint, GridDimensions> MapGridDimensions;
+typedef std::map<uint, GridDimensions> MapGridDimensions;
 
 MapGridDimensions getGridDimensions();
 

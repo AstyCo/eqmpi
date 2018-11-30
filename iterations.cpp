@@ -1,5 +1,11 @@
 #include "iterations.hpp"
 
+uint Iterations::K = 20; // time step count
+real Iterations::T = 10;
+real Iterations::Lx = 2 * M_PI;
+real Iterations::Ly = 2 * M_PI;
+real Iterations::Lz = 2 * M_PI;
+
 void Requests::append(ConnectionDirection cdir, uint sz)
 {
     Info i;
@@ -30,7 +36,7 @@ void run()
 {
 	MY_ASSERT(step == 1);
 	// STEPS
-    for (; step < K; ++step) {
+    for (; step < K + 1; ++step) {
         // async receive prev
         {
             const Requests &requests = recv_requests;

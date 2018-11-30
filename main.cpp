@@ -2,6 +2,8 @@
 
 int main(int argc, char *argv[])
 {
+    clargs.parse(argc, argv);
+
     // ComputeNode RAII MPI resources (MPI_Initialize, MPI_Finalize)
     ComputeNode cnode; // rank, size
 
@@ -9,6 +11,7 @@ int main(int argc, char *argv[])
 
     its.prepare();
     its.run();
+
 
     return 0;
 }
