@@ -1,12 +1,16 @@
 CC=mpixlcxx_r
-CFLAGS=-O3 -qsmp=omp
+EXTRAS_CFLAGS=-qarch=450d -qtune=450
+CFLAGS=-O3 -qsmp=omp -qstrict
 INC=
 INC_PARAMS=$(foreach d, $(INC), -I$d)
 LDFLAGS=-lm
-SOURCES=main.cpp utils.cpp globals.cpp iterations.cpp
+SOURCES=iterations.cpp globals.cpp utils.cpp main.cpp 
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=t2
 ARGUMENTS=
+
+one:
+	$(CC) $(CFLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
 
 all: $(SOURCES) $(EXECUTABLE)
 	

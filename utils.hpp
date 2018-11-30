@@ -31,7 +31,7 @@ private:
 struct CommandLineArgs
 {
     int argc;
-    char *argv[];
+    char **argv;
 
     bool test;
     uint ngpu;
@@ -53,7 +53,7 @@ struct CommandLineArgs
         nrun = static_cast<long long>(-1);
     }
 
-    void parse(int argc_, char *argv_[]);
+    void parse(int argc_, char **argv_);
     void parseArg(char arg[]);
 };
 

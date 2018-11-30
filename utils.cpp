@@ -22,9 +22,13 @@ double randomize(double min, double max)
 
 ComputeNode::ComputeNode()
 {
-	
     // Initialize the MPI environment
-    MPI_Init(argc, argv);
+    MPI_Init(&clargs.argc, &clargs.argv);
+#ifdef WITH_OMP
+    omp_set_num_threads(3); // set the number of threads for this programm
+    omp_set_dynamic(0); // allways use maximum number of threads (not less)
+#endif
+
 	// Get the number of processes`
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -40,7 +44,7 @@ ComputeNode::ComputeNode()
     fillXYZ();
 }
 
-ComputeNode::ComputeNode()
+ComputeNode::~ComputeNode()
 {
 	// Finalize the MPI environment.
     MPI_Finalize();
@@ -61,7 +65,7 @@ int ComputeNode::neighbor(ConnectionDirection cdir) const
 	}
 }
 
-bool is(ConnectionDirection cdir) const
+bool ComputeNode::is(ConnectionDirection cdir) const
 {
 	return neighbor(cdir) != -1;
 }
@@ -116,7 +120,7 @@ public:
             clear();
         _started = true;
 
-        _wstart = magma_sync_wtime ( NULL );
+        _wstart = MPI_Wtime();
     }
 
     void clear()
@@ -128,7 +132,7 @@ public:
     {
         MY_ASSERT(_started);
 
-        _wall_clock_elapsed = magma_sync_wtime ( NULL ) - _wstart;
+        _wall_clock_elapsed = MPI_Wtime() - _wstart;
 
         clear();
     }
@@ -184,7 +188,7 @@ void Profiler::print() const
     _impl->print();
 }
 
-void CommandLineArgs::parse(int argc_, char *argv_[])
+void CommandLineArgs::parse(int argc_, char **argv_)
 {
 	argc = argc_;
 	argv = argv_;

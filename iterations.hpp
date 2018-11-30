@@ -22,6 +22,7 @@ struct Iterations
         std::vector<RealVector> buff;
         std::vector<Info> iv;
 
+        uint size() const { return v.size();}
         void append(ConnectionDirection cdir, uint sz);
     };
 
@@ -32,25 +33,25 @@ struct Iterations
     static real Ly;
     static real Lz;
 
-    const uint i0;
-    const uint j0;
-    const uint k0;
+    uint i0;
+    uint j0;
+    uint k0;
 
-    const uint ic;  // counts
-    const uint jc;  // counts
-    const uint kc;  // counts
-    const uint size;
-    const uint bigsize;
+    uint ic;  // counts
+    uint jc;  // counts
+    uint kc;  // counts
+    uint size;
+    uint bigsize;
 
-    const uint imax;
-    const uint jmax;
-    const uint kmax;
+    uint imax;
+    uint jmax;
+    uint kmax;
 
-    const real hx;
-    const real hy;
-    const real hz;
+    real hx;
+    real hy;
+    real hz;
 
-    const uint ht; // delta t
+    uint ht; // delta t
 
     RealVector array;
     RealVector arrayP;
@@ -75,6 +76,7 @@ struct Iterations
 
     int step;
 
+    const ComputeNode &cnode;
 
     Iterations(const ComputeNode &n);
 
@@ -89,7 +91,7 @@ struct Iterations
     void copy_recv(RealVector &v, uint i, uint j, uint k);
     void copy_send(RealVector &v, uint i, uint j, uint k);
 
-    void copy_data(uint id, CopyMFuncPtr f);
+    void copy_data(Requests &requests, uint id, CopyMFuncPtr f);
     void calculate(uint i, uint j, uint k);
     void calculate(ConnectionDirection cdir);
     void calculate_edge_values();
