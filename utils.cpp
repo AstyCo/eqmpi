@@ -24,8 +24,8 @@ double randomize(double min, double max)
 void ComputeNode::init()
 {
 #ifdef WITH_OMP
-    omp_set_num_threads(3); // set the number of threads for this programm
-    omp_set_dynamic(0); // allways use maximum number of threads (not less)
+    omp_set_num_threads(4); // set the number of threads for this programm
+//    omp_set_dynamic(0); // allways use maximum number of threads (not less)
 #endif
 
 	// Get the number of processes`
@@ -92,17 +92,17 @@ int ComputeNode::toRank(uint i, uint j, uint k) const
 
 void ComputeNode::print(const std::string &str) const
 {
-    std::cout << titledStr(str);
+    std::cout << titledStr(str) << std::endl;
 }
 
 void ComputeNode::error(const std::string &err) const
 {
-    std::cerr << titledStr(err);
+    std::cerr << titledStr(err) << std::endl;
 }
 
 std::string ComputeNode::titledStr(const std::string &str) const
 {
-    return SSTR(mpi.rank << ": " << str << std::endl);
+    return SSTR(mpi.rank << ": " << str);
 }
 
 class ProfilerPrivate
@@ -175,7 +175,12 @@ private:
 Profiler::Profiler(Profiler::Options opts)
     : _impl(new ProfilerPrivate(opts))
 {
+    start();
+}
 
+Profiler::~Profiler()
+{
+    delete _impl;
 }
 
 void Profiler::start()

@@ -17,6 +17,7 @@ public:
     };
 
     explicit Profiler(Options opts = Default);
+    ~Profiler();
 
     void start();
     void finish();
@@ -39,7 +40,7 @@ struct CommandLineArgs
     CommandLineArgs()
     {
         // default
-        K = 3;
+        K = 20;
         N = 8;
     }
 

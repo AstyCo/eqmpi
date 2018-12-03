@@ -26,12 +26,20 @@ struct Iterations
         };
 
         std::vector<MPI_Request> v;
-        std::vector<RealVector> buff;
+        std::vector<RealVector> buffs;
         std::vector<Info> iv;
+        std::vector<MPI_Status> statuses;
 
         uint size() const { return v.size();}
         void append(Info info, uint sz);
+
+        Requests()
+        {
+            buffs.reserve(DIR_SIZE);
+        }
     };
+
+    uint N;
 
 
     static real T;
@@ -46,7 +54,6 @@ struct Iterations
     uint ic;  // counts
     uint jc;  // counts
     uint kc;  // counts
-    uint size;
     uint bigsize;
 
     uint imax;
@@ -82,7 +89,7 @@ struct Iterations
 
     int next_step;
 
-    Iterations();
+    Iterations(uint N_);
 
     void prepare();
     void run();

@@ -11,12 +11,14 @@ void Iterations::Requests::append(Iterations::Requests::Info info, uint sz)
 
     v.push_back(MPI_REQUEST_NULL);
 
-    buff.push_back(RealVector());
-    buff.back().resize(sz);
+    buffs.push_back(RealVector());
+    buffs.back().resize(sz);
+
+    statuses.push_back(MPI_Status());
 }
 
-Iterations::Iterations()
-    : next_step(0)
+Iterations::Iterations(uint N_)
+    : N(N_), next_step(0)
 {
     fill(cnode);
 }
@@ -34,14 +36,14 @@ void Iterations::run()
 	// STEPS
     bool first = true;
     for (; next_step < clargs.K + 1; ++next_step) {
-        cnode.print(SSTR("STEP " << next_step));
+//        cnode.print(SSTR("STEP " << next_step));
         // async receive prev
         if (!first) {
             // asynchronous recv from every neighbor processor
             for (uint i = 0; i < recv_requests.size(); ++i) {
-                cnode.print(SSTR("RECV FROM " << cnode.neighbor(recv_requests.iv[i].dir)));
-                MPI_Irecv(recv_requests.buff[i].data(),
-                          recv_requests.buff[i].size(),
+//                cnode.print(SSTR("RECV FROM " << cnode.neighbor(recv_requests.iv[i].dir)));
+                MPI_Irecv(recv_requests.buffs[i].data(),
+                          recv_requests.buffs[i].size(),
                           MPI_TYPE_REAL,
                           cnode.neighbor(recv_requests.iv[i].dir),
                           TAG_BOUNDARY_ELEMENTS,
@@ -52,7 +54,7 @@ void Iterations::run()
 #ifdef WITH_OMP
 #       pragma omp parallel for // parallel slices
 #endif
-        for (uint i = 1; i < ic - 1; ++i) {
+        for (int i = 1; i < ic - 1; ++i) {
             for (uint j = 1; j < jc - 1; ++j) {
                 for (uint k = 1; k < kc - 1; ++k) {
                     calculate(i, j, k);
@@ -60,30 +62,29 @@ void Iterations::run()
             }
         }
         // sync recv prev
-#ifdef WITH_OMP
-#       pragma omp parallel // parallel recv
-#endif
+//#       ifdef WITH_OMP
+//#           pragma omp parallel // parallel recv
+//#       endif
         {
             int request_index;
             MPI_Status status;
-            cnode.print("MPI_Waitany");
+//            cnode.print("MPI_Waitany Irecv");
             for(;;) {
                 MPI_Waitany(recv_requests.v.size(),
                             recv_requests.v.data(),
                             &request_index,
                             &status);
                 if (request_index == MPI_UNDEFINED) {
-                    cnode.print(SSTR("UNDEFINED"));
+//                    cnode.print(SSTR("UNDEFINED"));
                     break;
                 }
-                MY_ASSERT(request_index >= 0);
-                MY_ASSERT(request_index < recv_requests.iv.size());
-                cnode.print(
-                    SSTR("MESSAGE FROM " <<
-                         cnode.neighbor(recv_requests.iv[request_index].dir)));
+                CHECK_INDEX(request_index, 0, recv_requests.iv.size());
+//                cnode.print(
+//                    SSTR("MESSAGE FROM " <<
+//                         cnode.neighbor(recv_requests.iv[request_index].dir)));
                 const Iterations::Requests::Info &info
                         = recv_requests.iv[request_index];
-                cnode.print(SSTR("info " << info.dir <<',' << request_index));
+//                cnode.print(SSTR("info " << info.dir <<',' << request_index));
                 copy_data(recv_requests, request_index, MPI_OP_RECV);
                 calculate(info.dir);
             }
@@ -91,20 +92,21 @@ void Iterations::run()
         calculate_edge_values();
         shift_arrays(); // update arrays
         // async send prev
-        if (next_step != clargs.K) {
-            MPI_Status status;
-
-            cnode.print("MPI_Waitall");
+        if (next_step < clargs.K) {
+//            cnode.print("MPI_Waitall");
             MPI_Waitall(send_requests.v.size(),
                         send_requests.v.data(),
-                        &status); // wait for every asynchronous send (so we can use send buffers again)
+                        send_requests.statuses.data()); // wait for every asynchronous send (so we can use send buffers again)
             // asynchronous send to every neighbor processor
-            for (uint i = 0; i < send_requests.size(); ++i) {
-                cnode.print(SSTR("SEND TO " << cnode.neighbor(send_requests.iv[i].dir)));
+//#           ifdef WITH_OMP
+//#               pragma omp parallel for // parallel recv
+//#           endif
+            for (int i = 0; i < send_requests.size(); ++i) {
+//                cnode.print(SSTR("SEND TO " << cnode.neighbor(send_requests.iv[i].dir)));
                 copy_data(send_requests, i, MPI_OP_SEND);
 
-                MPI_Isend(send_requests.buff[i].data(),
-                          send_requests.buff[i].size(),
+                MPI_Isend(send_requests.buffs[i].data(),
+                          send_requests.buffs[i].size(),
                           MPI_TYPE_REAL,
                           cnode.neighbor(send_requests.iv[i].dir),
                           TAG_BOUNDARY_ELEMENTS,
@@ -127,10 +129,10 @@ uint Iterations::dir_size(ConnectionDirection cdir)
     case DIR_MINUS_Y:
     case DIR_Y_PERIOD_FIRST:
     case DIR_Y_PERIOD_LAST:
-        return jc * kc;
+        return ic * kc;
     case DIR_Z:
     case DIR_MINUS_Z:
-        return jc * kc;
+        return ic * jc;
     default:
         MY_ASSERT(false);
         return 0;
@@ -143,14 +145,14 @@ void Iterations::fill(const ComputeNode &n)
     MY_ASSERT(0 == n.mpi.procCount % n.gridDimensions.y);
     MY_ASSERT(0 == n.mpi.procCount % n.gridDimensions.z);
 
-    ic = clargs.N / n.gridDimensions.x;
-    jc = clargs.N / n.gridDimensions.y;
-    kc = clargs.N / n.gridDimensions.z;
+    ic = N / n.gridDimensions.x;
+    jc = N / n.gridDimensions.y;
+    kc = N / n.gridDimensions.z;
 
     // TODO
-    MY_ASSERT(0 == clargs.N % n.gridDimensions.x);
-    MY_ASSERT(0 == clargs.N % n.gridDimensions.y);
-    MY_ASSERT(0 == clargs.N % n.gridDimensions.z);
+    MY_ASSERT(0 == N % n.gridDimensions.x);
+    MY_ASSERT(0 == N % n.gridDimensions.y);
+    MY_ASSERT(0 == N % n.gridDimensions.z);
 
     i0 = n.x * ic;
     j0 = n.y * jc;
@@ -166,10 +168,10 @@ void Iterations::fill(const ComputeNode &n)
 
     ht = T / clargs.K;
 
-    size = ic * jc * kc;
     bigsize = (ic + 2) * (jc + 2) * (kc + 2);
 
     // optimization (allocations may throw std::bad_alloc if no enough memory)
+    try {
     array.resize(bigsize);
     arrayP.resize(bigsize);
     arrayPP.resize(bigsize);
@@ -184,11 +186,15 @@ void Iterations::fill(const ComputeNode &n)
             recv_requests.append(info, dir_size(cdir));
         }
     }
-    cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
-                     << " i0, j0, k0 (ic, jc, kc): "
-                     << i0 << ',' << j0 << ',' << k0
-                     << " (" << ic  << ',' << jc << ',' << kc << ")"
-                     << std::endl));
+//    cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
+//                     << " i0, j0, k0 (ic, jc, kc): "
+//                     << i0 << ',' << j0 << ',' << k0
+//                     << " (" << ic  << ',' << jc << ',' << kc << ")"
+//                     << std::endl));
+    }
+    catch(...) {
+        MY_ASSERT(false);
+    }
 }
 
 void Iterations::copy_recv(RealVector &v, RealVector &a,
@@ -198,9 +204,9 @@ void Iterations::copy_recv(RealVector &v, RealVector &a,
     CHECK_INDEX(get_p_index(i, j, k), 0, a.size());
 
     a[get_p_index(i, j, k)] = v[offset];
-    cnode.print(SSTR("copy_recv " << i << ',' << j << ',' << k
-                     << '(' << get_p_index(i, j, k) << ')'
-                     << '=' << offset));
+//    cnode.print(SSTR("copy_recv " << i << ',' << j << ',' << k
+//                     << '(' << get_p_index(i, j, k) << ')'
+//                     << '=' << offset));
 }
 
 void Iterations::copy_send(RealVector &v, RealVector &a,
@@ -210,9 +216,9 @@ void Iterations::copy_send(RealVector &v, RealVector &a,
     CHECK_INDEX(get_p_index(i, j, k), 0, a.size());
 
     v[offset] = a[get_p_index(i, j, k)];
-    cnode.print(SSTR("copy_send " << offset
-                     << '=' << i << ',' << j << ',' << k
-                     << '(' << get_p_index(i, j, k) << ')'));
+//    cnode.print(SSTR("copy_send " << offset
+//                     << '=' << i << ',' << j << ',' << k
+//                     << '(' << get_p_index(i, j, k) << ')'));
 }
 
 void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
@@ -221,7 +227,7 @@ void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
     CopyMFuncPtr copy_func = ((type == MPI_OP_SEND) ? &Iterations::copy_send
                                         : &Iterations::copy_recv);
     ConnectionDirection cdir= requests.iv[id].dir;
-    RealVector &v = requests.buff[id];
+    RealVector &v = requests.buffs[id];
     uint offset = 0;
     switch (cdir) {
     case DIR_X:
@@ -283,7 +289,7 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_Y:
     case DIR_MINUS_Y:
     {
-        uint j = sendrecvEdgeId(cdir);
+        uint j = sendEdgeId(cdir);
         for (uint i = 1; i < ic - 1; ++i) {
             for (uint k = 1; k < kc - 1; ++k)
                 calculate(i, j, k);
@@ -293,11 +299,11 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_Z:
     case DIR_MINUS_Z:
     {
-        uint k = sendrecvEdgeId(cdir);
-        for (uint i = 1; i < ic - 1; ++i)
-            for (uint j = 1; j < jc - 1; ++j) {
+        uint k = sendEdgeId(cdir);
+        for (uint i = 1; i < ic - 1; ++i) {
+            for (uint j = 1; j < jc - 1; ++j)
                 calculate(i, j, k);
-            }
+        }
         break;
     }
     case DIR_Y_PERIOD_FIRST:
@@ -336,7 +342,7 @@ void Iterations::calculate(uint i, uint j, uint k)
     uint p_index = get_p_index(i, j, k);
     uint pp_index = index;
 
-    cnode.print(SSTR("calculate " << i << ',' << j << ',' << k));
+//    cnode.print(SSTR("calculate " << i << ',' << j << ',' << k));
 
     CHECK_INDEX(index, 0, array.size());
     CHECK_INDEX(p_index, 0, array.size());
@@ -364,7 +370,10 @@ void Iterations::calculate(uint i, uint j, uint k)
 
 void Iterations::it_for_each(IndexesMFuncPtr func)
 {
-   for (uint i = 0; i < ic; ++i) {
+#ifdef WITH_OMP
+#   pragma omp parallel for
+#endif
+   for (int i = 0; i < ic; ++i) {
        for (uint j = 0; j < jc; ++j) {
            for (uint k = 0; k < kc; ++k) {
                (this->*func)(i, j, k);
@@ -377,7 +386,7 @@ void Iterations::shift_arrays()
 {
     uint byteSize = bigsize * sizeof(real);
 
-    // array -> arrayP, arrayP -> arrayPP
+//    // array -> arrayP, arrayP -> arrayPP
     memcpy(arrayPP.data(), arrayP.data(), byteSize);
     memcpy(arrayP.data(), array.data(), byteSize);
 }

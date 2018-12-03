@@ -2,6 +2,10 @@
 #define GLOBALS_HPP
 
 #include <mpi.h> // global include mpi just becouse we can
+#ifdef WITH_OMP
+#include <omp.h>
+#endif
+
 
 #include <map>
 
@@ -16,8 +20,16 @@
 #define SSTR( x ) static_cast< std::ostringstream & >( \
         ( std::ostringstream() << std::dec << x ) ).str()
 
+
+#define DEBUG
+#ifdef DEBUG
 #define MY_ASSERT(x) if (!(x)) Asserter(__FILE__, __LINE__);
-#define CHECK_INDEX(id, first, size) MY_ASSERT((id) >= (first) && (id) < (size));
+#define MY_ASSERT_X(x, text) if (!(x)) {cnode.error(text); Asserter(__FILE__, __LINE__);}
+#define CHECK_INDEX(id, first, size) MY_ASSERT_X((id) >= (first) && (id) < (size), SSTR("Id " << id << " First " << first << " Size " << size));
+#else
+#define MY_ASSERT(x) ;
+#define CHECK_INDEX(id, first, size) ;
+#endif
 
 typedef unsigned int uint;
 
@@ -29,7 +41,7 @@ typedef float real;
 #else
 typedef double real;
 #   ifndef MPI_TYPE_REAL
-#       define MPI_TYPE_REAL MPI_FLOAT
+#       define MPI_TYPE_REAL MPI_DOUBLE
 #   endif
 #endif
 
