@@ -39,8 +39,8 @@ struct CommandLineArgs
     CommandLineArgs()
     {
         // default
-        K = 20;
-        N = 64;
+        K = 4;
+        N = 8;
     }
 
     void parse(int argc_, char **argv_);

@@ -5,12 +5,9 @@ real Iterations::Lx = 2 * M_PI;
 real Iterations::Ly = 2 * M_PI;
 real Iterations::Lz = 2 * M_PI;
 
-void Iterations::Requests::append(ConnectionDirection cdir, uint sz)
+void Iterations::Requests::append(Iterations::Requests::Info info, uint sz)
 {
-    Info i;
-    i.dir = cdir;
-
-    iv.push_back(i);
+    iv.push_back(info);
 
     v.push_back(MPI_REQUEST_NULL);
 
@@ -21,18 +18,13 @@ void Iterations::Requests::append(ConnectionDirection cdir, uint sz)
 Iterations::Iterations()
     : next_step(0)
 {
-    cnode.print("DEBUG: Iterations");
     fill(cnode);
-    cnode.print("DEBUG: Iterations filled");
 }
 
 void Iterations::prepare()
 {
-    cnode.print("DEBUG: Iterations prepare");
 	step0();
-    cnode.print("DEBUG: Iterations step0");
 	step1();
-    cnode.print("DEBUG: Iterations step1");
 }
 
 
@@ -75,21 +67,23 @@ void Iterations::run()
         {
             int request_index;
             MPI_Status status;
-            Iterations::Requests &requests = recv_requests;
             cnode.print("MPI_Waitany");
-            while (MPI_Waitany(requests.v.size(),
-                               requests.v.data(),
-                               &request_index,
-                               &status)) {
-                if (request_index == MPI_UNDEFINED)
+            for(;;) {
+                MPI_Waitany(recv_requests.v.size(),
+                            recv_requests.v.data(),
+                            &request_index,
+                            &status);
+                if (request_index == MPI_UNDEFINED) {
+                    cnode.print(SSTR("UNDEFINED"));
                     break;
+                }
 
-                cnode.print(SSTR("MESSAGE FROM " << cnode.neighbor(requests.iv[request_index].dir)));
+                cnode.print(
+                    SSTR("MESSAGE FROM " <<
+                         cnode.neighbor(recv_requests.iv[request_index].dir)));
                 const Iterations::Requests::Info &info
-                        = requests.iv[request_index];
-                cnode.print("index+");
-                copy_data(requests, request_index, &Iterations::copy_recv);
-                cnode.print("copy_recv+");
+                        = recv_requests.iv[request_index];
+                copy_data(recv_requests, request_index, MPI_OP_RECV);
                 calculate(info.dir);
             }
         }
@@ -98,25 +92,23 @@ void Iterations::run()
         // async send prev
         if (next_step != clargs.K) {
             MPI_Status status;
-            Requests &requests = send_requests;
 
             cnode.print("MPI_Waitall");
-            MPI_Waitall(requests.v.size(),
-                        requests.v.data(),
+            MPI_Waitall(send_requests.v.size(),
+                        send_requests.v.data(),
                         &status); // wait for every asynchronous send (so we can use send buffers again)
             // asynchronous send to every neighbor processor
-            for (uint i = 0; i < requests.size(); ++i) {
-                cnode.print(SSTR("SEND TO " << cnode.neighbor(requests.iv[i].dir)));
-                copy_data(requests, i, &Iterations::copy_send);
-                cnode.print("copy_send+");
+            for (uint i = 0; i < send_requests.size(); ++i) {
+                cnode.print(SSTR("SEND TO " << cnode.neighbor(send_requests.iv[i].dir)));
+                copy_data(send_requests, i, MPI_OP_SEND);
 
-                MPI_Isend(requests.buff[i].data(),
-                          requests.buff[i].size(),
+                MPI_Isend(send_requests.buff[i].data(),
+                          send_requests.buff[i].size(),
                           MPI_TYPE_REAL,
-                          cnode.neighbor(requests.iv[i].dir),
+                          cnode.neighbor(send_requests.iv[i].dir),
                           TAG_BOUNDARY_ELEMENTS,
                           MPI_COMM_WORLD,
-                          &requests.v[i]);
+                          &send_requests.v[i]);
             }
         }
         first = false;
@@ -132,6 +124,8 @@ uint Iterations::dir_size(ConnectionDirection cdir)
         return jc * kc;
     case DIR_Y:
     case DIR_MINUS_Y:
+    case DIR_Y_PERIOD_FIRST:
+    case DIR_Y_PERIOD_LAST:
         return jc * kc;
     case DIR_Z:
     case DIR_MINUS_Z:
@@ -182,8 +176,11 @@ void Iterations::fill(const ComputeNode &n)
     for (int i = 0; i < DIR_SIZE; ++i) {
         ConnectionDirection cdir = toCD(i);
         if (n.is(cdir)) {
-            send_requests.append(cdir, dir_size(cdir));
-            recv_requests.append(cdir, dir_size(cdir));
+            Requests::Info info;
+            info.dir = cdir;
+
+            send_requests.append(info, dir_size(cdir));
+            recv_requests.append(info, dir_size(cdir));
         }
     }
     cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
@@ -193,60 +190,68 @@ void Iterations::fill(const ComputeNode &n)
                      << std::endl));
 }
 
-void Iterations::copy_recv(RealVector &v, uint i, uint j, uint k)
+void Iterations::copy_recv(RealVector &v, RealVector &a,
+                           int i, int j, int k, uint offset)
 {
-    arrayP[get_p_index(i, j, k)] = v[j * kc + k];
+    a[get_p_index(i, j, k)] = v[offset];
+    cnode.print(SSTR("copy_recv " << i << ',' << j << ',' << k
+                     << '(' << get_p_index(i, j, k) << ')'
+                     << '=' << offset));
 }
 
-void Iterations::copy_send(RealVector &v, uint i, uint j, uint k)
+void Iterations::copy_send(RealVector &v, RealVector &a,
+                           int i, int j, int k, uint offset)
 {
-    v[j * kc + k] = arrayP[get_p_index(i, j, k)];
+    v[offset] = a[get_p_index(i, j, k)];
+    cnode.print(SSTR("copy_send " << offset
+                     << '=' << i << ',' << j << ',' << k
+                     << '(' << get_p_index(i, j, k) << ')'));
 }
 
-void Iterations::copy_data(Requests &requests, uint id, CopyMFuncPtr f)
+void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
 {
+    CopyMFuncPtr copy_func = ((type == MPI_OP_SEND) ? &Iterations::copy_send
+                                        : &Iterations::copy_recv);
     ConnectionDirection cdir= requests.iv[id].dir;
     RealVector &v = requests.buff[id];
+    uint offset = 0;
     switch (cdir) {
     case DIR_X:
     case DIR_MINUS_X:
     {
-        uint i = ((cdir == DIR_X)
-                    ? ic - 1
-                    : 0);
+        int i = edgeId(cdir, type);
         for (uint j = 0; j < jc; ++j) {
             for (uint k = 0; k < kc; ++k) {
-                (this->*f)(v, i, j, k);
+                (this->*copy_func)(v, arrayP, i, j, k, offset++);
             }
-
         }
         break;
     }
     case DIR_Y:
     case DIR_MINUS_Y:
+    case DIR_Y_PERIOD_FIRST:
+    case DIR_Y_PERIOD_LAST:
     {
-        uint j = ((cdir == DIR_Y)
-                    ? jc - 1
-                    : 0);
+        RealVector &a = (((cdir == DIR_Y_PERIOD_LAST)
+                         && (type == MPI_OP_RECV))
+                         ? array
+                         : arrayP);
+        int j = edgeId(cdir, type);
         for (uint i = 0; i < ic; ++i) {
             for (uint k = 0; k < kc; ++k) {
-                (this->*f)(v, i, j, k);
+                (this->*copy_func)(v, a, i, j, k, offset++);
             }
-
         }
         break;
     }
     case DIR_Z:
     case DIR_MINUS_Z:
     {
-        uint k = ((cdir == DIR_Z)
-                    ? kc - 1
-                    : 0);
+        int k = edgeId(cdir, type);
         for (uint i = 0; i < ic; ++i) {
             for (uint j = 0; j < jc; ++j) {
-                (this->*f)(v, i, j, k);
+                (this->*copy_func)(v, arrayP, i, j, k, offset++);
             }
-
         }
         break;
     }
@@ -260,8 +265,7 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_X:
     case DIR_MINUS_X:
     {
-        uint i = ((cdir == DIR_X) ? ic - 1
-                                  : 0);
+        uint i = sendrecvEdgeId(cdir);
         for (uint j = 1; j < jc - 1; ++j) {
             for (uint k = 1; k < kc - 1; ++k)
                 calculate(i, j, k);
@@ -271,8 +275,7 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_Y:
     case DIR_MINUS_Y:
     {
-        uint j = ((cdir == DIR_Y) ? jc - 1
-                                  : 0);
+        uint j = sendrecvEdgeId(cdir);
         for (uint i = 1; j < ic - 1; ++i) {
             for (uint k = 1; k < kc - 1; ++k)
                 calculate(i, j, k);
@@ -282,14 +285,17 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_Z:
     case DIR_MINUS_Z:
     {
-        uint k = ((cdir == DIR_Z) ? kc - 1
-                                  : 0);
+        uint k = sendrecvEdgeId(cdir);
         for (uint i = 1; i < ic - 1; ++i)
             for (uint j = 1; j < jc - 1; ++j) {
                 calculate(i, j, k);
             }
         break;
     }
+    case DIR_Y_PERIOD_FIRST:
+    case DIR_Y_PERIOD_LAST:
+        // just copy
+        break;
     default: MY_ASSERT(false);
     }
 }
@@ -344,9 +350,11 @@ void Iterations::it_for_each(IndexesMFuncPtr func)
 
 void Iterations::shift_arrays()
 {
+    uint byteSize = bigsize * sizeof(real);
+
     // array -> arrayP, arrayP -> arrayPP
-    memcpy(arrayPP.data(), arrayP.data(), arrayP.size() * sizeof(real));
-    memcpy(arrayPP.data(), arrayP.data(), arrayP.size() * sizeof(real));
+    memcpy(arrayPP.data(), arrayP.data(), byteSize);
+    memcpy(arrayP.data(), array.data(), byteSize);
 }
 
 uint Iterations::get_index(uint i, uint j, uint k) const
@@ -385,4 +393,59 @@ void Iterations::step1()
     MY_ASSERT(next_step == 1);
     it_for_each(&Iterations::set_1th);
     next_step = 2;
+}
+
+int Iterations::edgeId(ConnectionDirection cdir, Iterations::MPI_OP op_type)
+{
+    if (op_type == MPI_OP_RECV)
+        return recvEdgeId(cdir);
+    else
+        return sendEdgeId(cdir);
+}
+
+int Iterations::sendEdgeId(ConnectionDirection cdir) const
+{
+    switch (cdir) {
+    case DIR_Y_PERIOD_FIRST: return jc - 1;
+    case DIR_Y_PERIOD_LAST: return 1;
+    case DIR_X: return ic - 1;
+    case DIR_MINUS_X: return 0;
+    case DIR_Y: return jc - 1;
+    case DIR_MINUS_Y:return 0;
+    case DIR_Z: return kc - 1;
+    case DIR_MINUS_Z: return 0;
+    default: MY_ASSERT(false); return 0;
+    }
+}
+
+int Iterations::recvEdgeId(ConnectionDirection cdir) const
+{
+    switch (cdir) {
+    case DIR_Y_PERIOD_FIRST:
+        return jc;
+    case DIR_Y_PERIOD_LAST:
+        return 0;
+    case DIR_X:
+    case DIR_Y:
+    case DIR_Z:
+        return sendEdgeId(cdir) + 1;
+    case DIR_MINUS_X:
+    case DIR_MINUS_Y:
+    case DIR_MINUS_Z:
+        return sendEdgeId(cdir) - 1;
+    default: MY_ASSERT(false); return 0;
+    }
+}
+
+int Iterations::sendrecvEdgeId(ConnectionDirection cdir) const
+{
+    switch (cdir) {
+    case DIR_X: return ic - 1;
+    case DIR_MINUS_X: return 0;
+    case DIR_Y: return jc - 1;
+    case DIR_MINUS_Y:return 0;
+    case DIR_Z: return kc - 1;
+    case DIR_MINUS_Z: return 0;
+    default: MY_ASSERT(false); return 0;
+    }
 }

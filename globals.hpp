@@ -76,6 +76,9 @@ enum ConnectionDirection
     DIR_Z,
     DIR_MINUS_Z,
 
+    DIR_Y_PERIOD_FIRST,
+    DIR_Y_PERIOD_LAST,
+
     DIR_SIZE
 };
 ConnectionDirection toCD(int i);

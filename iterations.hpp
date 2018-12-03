@@ -8,8 +8,15 @@
 struct Iterations
 {
     typedef std::vector<real> RealVector;
-    typedef void (Iterations::*CopyMFuncPtr)(RealVector &, uint, uint, uint);
+    typedef void (Iterations::*CopyMFuncPtr)(RealVector &, RealVector &,
+                                             int, int, int, uint);
     typedef void (Iterations::*IndexesMFuncPtr)(uint, uint, uint);
+
+    enum MPI_OP
+    {
+        MPI_OP_RECV,
+        MPI_OP_SEND
+    };
 
     struct Requests
     {
@@ -23,7 +30,7 @@ struct Iterations
         std::vector<Info> iv;
 
         uint size() const { return v.size();}
-        void append(ConnectionDirection cdir, uint sz);
+        void append(Info info, uint sz);
     };
 
 
@@ -85,10 +92,10 @@ struct Iterations
 
     void fill(const ComputeNode &n);
 
-    void copy_recv(RealVector &v, uint i, uint j, uint k);
-    void copy_send(RealVector &v, uint i, uint j, uint k);
+    void copy_recv(RealVector &v, RealVector &a, int i, int j, int k, uint offset);
+    void copy_send(RealVector &v, RealVector &a, int i, int j, int k, uint offset);
 
-    void copy_data(Requests &requests, uint id, CopyMFuncPtr f);
+    void copy_data(Requests &requests, uint id, MPI_OP type);
     void calculate(uint i, uint j, uint k);
     void calculate(ConnectionDirection cdir);
     void calculate_edge_values();
@@ -108,6 +115,10 @@ struct Iterations
     void set_1th(uint i, uint j, uint k);
     void step1();
 
+    int edgeId(ConnectionDirection cdir, MPI_OP op_type);
+    int sendEdgeId(ConnectionDirection cdir) const;
+    int recvEdgeId(ConnectionDirection cdir) const;
+    int sendrecvEdgeId(ConnectionDirection cdir) const;
 };
 
 #endif // ITERATIONS_HPP

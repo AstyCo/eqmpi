@@ -41,8 +41,6 @@ void ComputeNode::init()
 
     fillGridDimensions();
     fillXYZ();
-
-    cnode.print("DEBUG: ComputeNode +");
 }
 
 int ComputeNode::neighbor(ConnectionDirection cdir) const
@@ -52,6 +50,8 @@ int ComputeNode::neighbor(ConnectionDirection cdir) const
 	case DIR_MINUS_X: return toRank(x - 1, y, z);
 	case DIR_Y: return toRank(x, y + 1, z);
 	case DIR_MINUS_Y: return toRank(x, y - 1, z);
+    case DIR_Y_PERIOD_FIRST: return toRank(x, y + 1 - gridDimensions.y, z);
+    case DIR_Y_PERIOD_LAST: return toRank(x, y + gridDimensions.y - 1, z);
 	case DIR_Z: return toRank(x, y, z + 1);
 	case DIR_MINUS_Z: return toRank(x, y, z - 1);
 	default:
