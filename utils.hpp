@@ -39,7 +39,7 @@ struct CommandLineArgs
     CommandLineArgs()
     {
         // default
-        K = 4;
+        K = 3;
         N = 8;
     }
 

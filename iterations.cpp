@@ -37,17 +37,16 @@ void Iterations::run()
         cnode.print(SSTR("STEP " << next_step));
         // async receive prev
         if (!first) {
-            Requests &requests = recv_requests;
             // asynchronous recv from every neighbor processor
-            for (uint i = 0; i < requests.size(); ++i) {
-                cnode.print(SSTR("RECV FROM " << cnode.neighbor(requests.iv[i].dir)));
-                MPI_Irecv(requests.buff[i].data(),
-                          requests.buff[i].size(),
+            for (uint i = 0; i < recv_requests.size(); ++i) {
+                cnode.print(SSTR("RECV FROM " << cnode.neighbor(recv_requests.iv[i].dir)));
+                MPI_Irecv(recv_requests.buff[i].data(),
+                          recv_requests.buff[i].size(),
                           MPI_TYPE_REAL,
-                          cnode.neighbor(requests.iv[i].dir),
+                          cnode.neighbor(recv_requests.iv[i].dir),
                           TAG_BOUNDARY_ELEMENTS,
                           MPI_COMM_WORLD,
-                          &requests.v[i]);
+                          &recv_requests.v[i]);
             }
         }
 #ifdef WITH_OMP
@@ -55,7 +54,7 @@ void Iterations::run()
 #endif
         for (uint i = 1; i < ic - 1; ++i) {
             for (uint j = 1; j < jc - 1; ++j) {
-                for (uint k = 1; k < kc -1; ++k) {
+                for (uint k = 1; k < kc - 1; ++k) {
                     calculate(i, j, k);
                 }
             }
@@ -77,12 +76,14 @@ void Iterations::run()
                     cnode.print(SSTR("UNDEFINED"));
                     break;
                 }
-
+                MY_ASSERT(request_index >= 0);
+                MY_ASSERT(request_index < recv_requests.iv.size());
                 cnode.print(
                     SSTR("MESSAGE FROM " <<
                          cnode.neighbor(recv_requests.iv[request_index].dir)));
                 const Iterations::Requests::Info &info
                         = recv_requests.iv[request_index];
+                cnode.print(SSTR("info " << info.dir <<',' << request_index));
                 copy_data(recv_requests, request_index, MPI_OP_RECV);
                 calculate(info.dir);
             }
@@ -193,6 +194,9 @@ void Iterations::fill(const ComputeNode &n)
 void Iterations::copy_recv(RealVector &v, RealVector &a,
                            int i, int j, int k, uint offset)
 {
+    CHECK_INDEX(offset, 0, v.size());
+    CHECK_INDEX(get_p_index(i, j, k), 0, a.size());
+
     a[get_p_index(i, j, k)] = v[offset];
     cnode.print(SSTR("copy_recv " << i << ',' << j << ',' << k
                      << '(' << get_p_index(i, j, k) << ')'
@@ -202,6 +206,9 @@ void Iterations::copy_recv(RealVector &v, RealVector &a,
 void Iterations::copy_send(RealVector &v, RealVector &a,
                            int i, int j, int k, uint offset)
 {
+    CHECK_INDEX(offset, 0, v.size());
+    CHECK_INDEX(get_p_index(i, j, k), 0, a.size());
+
     v[offset] = a[get_p_index(i, j, k)];
     cnode.print(SSTR("copy_send " << offset
                      << '=' << i << ',' << j << ',' << k
@@ -210,6 +217,7 @@ void Iterations::copy_send(RealVector &v, RealVector &a,
 
 void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
 {
+    CHECK_INDEX(id, 0, requests.iv.size());
     CopyMFuncPtr copy_func = ((type == MPI_OP_SEND) ? &Iterations::copy_send
                                         : &Iterations::copy_recv);
     ConnectionDirection cdir= requests.iv[id].dir;
@@ -265,7 +273,7 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_X:
     case DIR_MINUS_X:
     {
-        uint i = sendrecvEdgeId(cdir);
+        uint i = sendEdgeId(cdir);
         for (uint j = 1; j < jc - 1; ++j) {
             for (uint k = 1; k < kc - 1; ++k)
                 calculate(i, j, k);
@@ -276,7 +284,7 @@ void Iterations::calculate(ConnectionDirection cdir)
     case DIR_MINUS_Y:
     {
         uint j = sendrecvEdgeId(cdir);
-        for (uint i = 1; j < ic - 1; ++i) {
+        for (uint i = 1; i < ic - 1; ++i) {
             for (uint k = 1; k < kc - 1; ++k)
                 calculate(i, j, k);
         }
@@ -304,26 +312,42 @@ void Iterations::calculate_edge_values()
 {
     for (uint i = 0; i < ic; ++i) {
         calculate(i, 0, 0);
+        calculate(i, jc - 1, 0);
+        calculate(i, 0, kc - 1);
         calculate(i, jc - 1, kc - 1);
     }
-    for (uint j = 0; j < jc; ++j) {
+    for (uint j = 1; j < jc - 1; ++j) {
         calculate(0, j, 0);
+        calculate(ic - 1, j, 0);
+        calculate(0, j, kc - 1);
         calculate(ic - 1, j, kc - 1);
     }
-    for (uint k = 0; k < kc; ++k) {
+    for (uint k = 1; k < kc - 1; ++k) {
         calculate(0, 0, k);
+        calculate(ic - 1, 0, k);
+        calculate(0, jc - 1, k);
         calculate(ic - 1, jc - 1, k);
     }
-
-
 }
-
 
 void Iterations::calculate(uint i, uint j, uint k)
 {
     uint index = get_index(i, j, k);
     uint p_index = get_p_index(i, j, k);
     uint pp_index = index;
+
+    cnode.print(SSTR("calculate " << i << ',' << j << ',' << k));
+
+    CHECK_INDEX(index, 0, array.size());
+    CHECK_INDEX(p_index, 0, array.size());
+    CHECK_INDEX(get_index(i-1,j,k), 0, array.size());
+    CHECK_INDEX(get_index(i+1,j,k), 0, array.size());
+    CHECK_INDEX(get_index(i,j-1,k), 0, array.size());
+    CHECK_INDEX(get_index(i,j+1,k), 0, array.size());
+    CHECK_INDEX(get_index(i,j,k-1), 0, array.size());
+    CHECK_INDEX(get_index(i,j,k+1), 0, array.size());
+
+
     array[index] = 2 * arrayP[p_index] - arrayPP[pp_index]
             + ht * ht * (
                 (array[get_index(i-1,j,k)]
@@ -337,6 +361,7 @@ void Iterations::calculate(uint i, uint j, uint k)
             + array[get_index(i,j,k+1)]) / hz / hz
             );
 }
+
 void Iterations::it_for_each(IndexesMFuncPtr func)
 {
    for (uint i = 0; i < ic; ++i) {
@@ -371,6 +396,7 @@ uint Iterations::get_p_index(uint i, uint j, uint k) const
 void Iterations::set_0th(uint i, uint j, uint k)
 {
     uint index = get_index(i, j, k);
+    CHECK_INDEX(index, 0, arrayPP.size());
     arrayPP[index] = phi(x(i), y(j), z(k));
 }
 
@@ -385,6 +411,7 @@ void Iterations::step0()
 void Iterations::set_1th(uint i, uint j, uint k)
 {
     uint index = get_index(i, j, k);
+    CHECK_INDEX(index, 0, arrayP.size());
     arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
 }
 

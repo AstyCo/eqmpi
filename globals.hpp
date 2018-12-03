@@ -17,6 +17,7 @@
         ( std::ostringstream() << std::dec << x ) ).str()
 
 #define MY_ASSERT(x) if (!(x)) Asserter(__FILE__, __LINE__);
+#define CHECK_INDEX(id, first, size) MY_ASSERT((id) >= (first) && (id) < (size));
 
 typedef unsigned int uint;
 
