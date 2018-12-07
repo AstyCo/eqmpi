@@ -39,6 +39,23 @@ struct Iterations
         }
     };
 
+    struct Indice
+    {
+        int x, y, z, count;
+
+        Indice(int x_, int y_, int z_)
+            : x(x_), y(y_), z(z_), count(1)
+        {}
+
+        bool operator==(const Indice &i) const
+        {
+            return x == i.x && y == i.y && z == i.z;
+        }
+    };
+
+
+    typedef std::vector<Indice> IndiceVector;
+
     uint N;
 
     uint i0;
@@ -76,7 +93,9 @@ struct Iterations
 
     RealVector analyticalSolution;
 
-    std::vector<ConnectionDirection> no_neighbour_edges;
+    IndiceVector edgeIndeces;
+
+//    std::vector<ConnectionDirection> no_neighbour_edges;
     Requests recv_requests;
     Requests send_requests;
 
@@ -86,6 +105,9 @@ struct Iterations
 
     void prepare();
     void run();
+
+    void async_send_all();
+    void async_recv_all();
 
     void prepareSolution(uint n);
     void printDeviation(uint i, uint j, uint k, uint n);
@@ -110,7 +132,10 @@ struct Iterations
    	void it_for_each(IndexesMFuncPtr func);
     void shift_arrays();
 
+    void prepareEdgeIndices();
+
     uint get_index(uint i, uint j, uint k) const;
+    uint get_exact_index(uint i, uint j, uint k) const;
 
     real x(uint i) const { return (i0 + i) * hx;}
     real y(uint j) const { return (j0 + j) * hy;}
@@ -126,6 +151,8 @@ struct Iterations
     int sendEdgeId(ConnectionDirection cdir) const;
     int recvEdgeId(ConnectionDirection cdir) const;
     int sendrecvEdgeId(ConnectionDirection cdir) const;
+
+    void printArrayDebug();
 };
 
 #endif // ITERATIONS_HPP

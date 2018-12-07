@@ -51,3 +51,20 @@ std::string CDtoString(ConnectionDirection cdir)
     case DIR_SIZE: return std::string("DIR_SIZE");
     }
 }
+
+ConnectionDirection CDPair(ConnectionDirection cdir)
+{
+    switch (cdir) {
+    case DIR_X: return DIR_MINUS_X;
+    case DIR_MINUS_X: return DIR_X;
+    case DIR_Y: return DIR_MINUS_Y;
+    case DIR_MINUS_Y: return DIR_Y;
+    case DIR_Z: return DIR_MINUS_Z;
+    case DIR_MINUS_Z: return DIR_Z;
+    case DIR_Y_PERIOD_FIRST: return DIR_Y_PERIOD_LAST;
+    case DIR_Y_PERIOD_LAST: return DIR_Y_PERIOD_FIRST;
+    default:
+        MY_ASSERT(false);
+        return DIR_SIZE;
+    }
+}

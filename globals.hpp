@@ -103,6 +103,8 @@ enum ConnectionDirection
 
     DIR_SIZE
 };
+
+ConnectionDirection CDPair(ConnectionDirection cdir);
 ConnectionDirection toCD(int i);
 std::string CDtoString(ConnectionDirection cdir);
 

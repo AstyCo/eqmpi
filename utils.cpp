@@ -59,7 +59,7 @@ int ComputeNode::neighbor(ConnectionDirection cdir) const
 	}
 }
 
-bool ComputeNode::is(ConnectionDirection cdir) const
+bool ComputeNode::hasNeighbor(ConnectionDirection cdir) const
 {
 	return neighbor(cdir) != -1;
 }

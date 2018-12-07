@@ -41,7 +41,7 @@ struct CommandLineArgs
     {
         // default
         K = 50;
-        N = 50;
+        N = 8;
     }
 
     void parse(int argc_, char **argv_);
@@ -69,7 +69,7 @@ struct ComputeNode
     void init();
 
     int neighbor(ConnectionDirection cdir) const;
-    bool is(ConnectionDirection cdir) const;
+    bool hasNeighbor(ConnectionDirection cdir) const;
     void fillGridDimensions();
     void fillXYZ();
 
