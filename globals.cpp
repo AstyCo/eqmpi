@@ -18,8 +18,11 @@ MapGridDimensions getGridDimensions()
 {
     MapGridDimensions mts;
 
-    mts.insert(std::make_pair(20, GridDimensions(5, 2, 2)));
-    mts.insert(std::make_pair(160, GridDimensions(10, 4, 4)));
+    mts.insert(std::make_pair(1, GridDimensions(1, 1, 1)));
+    mts.insert(std::make_pair(2, GridDimensions(2, 1, 1)));
+    mts.insert(std::make_pair(4, GridDimensions(2, 2, 1)));
+    mts.insert(std::make_pair(8, GridDimensions(2, 2, 2)));
+    mts.insert(std::make_pair(16, GridDimensions(4, 2, 2)));
 
     mts.insert(std::make_pair(32, GridDimensions(4, 4, 2)));
     mts.insert(std::make_pair(128, GridDimensions(4, 4, 8)));

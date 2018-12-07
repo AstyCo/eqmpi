@@ -21,9 +21,9 @@ seqbgp:
 ompbgp:
 	$(CC) $(CFLAGS) -qsmp=omp $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
 	
-seqpl:
+seqpol:
 	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
-omppl:
+omppol:
 	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
 	
 clean: 
@@ -37,9 +37,9 @@ pol:
 polomp:
 	bsub <bsub_args_omp
 polall:
-	bsub <bsub_args
-	bsub <bsub_args_omp
-
+	bsub <bsub_args_32
+	bsub <bsub_args_16
+	bsub <bsub_args_8
 
 bsub_polus:
 	# TODO
