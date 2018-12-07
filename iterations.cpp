@@ -3,11 +3,6 @@
 #include <string.h>
 //#include <mem.h>
 
-real Iterations::T = 10;
-real Iterations::Lx = 2 * M_PI;
-real Iterations::Ly = 2 * M_PI;
-real Iterations::Lz = 2 * M_PI;
-
 void Iterations::Requests::append(Iterations::Requests::Info info, uint sz)
 {
     iv.push_back(info);
@@ -29,7 +24,9 @@ Iterations::Iterations(uint N_)
 void Iterations::prepare()
 {
 	step0();
+    printDeviationsPrivate(arrayPP, 0);
 	step1();
+    printDeviationsPrivate(arrayP, 1);
 }
 
 
@@ -37,19 +34,16 @@ void Iterations::run()
 {
     MY_ASSERT(next_step == 2);
 	// STEPS
-    bool first = true;
     for (; next_step < clargs.K + 1; ++next_step) {
-//        cnode.print(SSTR("STEP " << next_step));
         // async receive prev
-        if (!first) {
+        if (next_step > 2) {
             // asynchronous recv from every neighbor processor
             for (uint i = 0; i < recv_requests.size(); ++i) {
-//                cnode.print(SSTR("RECV FROM " << cnode.neighbor(recv_requests.iv[i].dir)));
                 MPI_Irecv(recv_requests.buffs[i].data(),
                           recv_requests.buffs[i].size(),
                           MPI_TYPE_REAL,
                           cnode.neighbor(recv_requests.iv[i].dir),
-                          TAG_BOUNDARY_ELEMENTS,
+                          next_step,
                           MPI_COMM_WORLD,
                           &recv_requests.v[i]);
             }
@@ -65,60 +59,128 @@ void Iterations::run()
             }
         }
         // sync recv prev
-//#       ifdef WITH_OMP
-//#           pragma omp parallel // parallel recv
-//#       endif
         {
             int request_index;
             MPI_Status status;
-//            cnode.print("MPI_Waitany Irecv");
+            for (uint i = 0; i < no_neighbour_edges.size(); ++i)
+                calculate(no_neighbour_edges[i]);
+
             for(;;) {
                 MPI_Waitany(recv_requests.v.size(),
                             recv_requests.v.data(),
                             &request_index,
                             &status);
                 if (request_index == MPI_UNDEFINED) {
-//                    cnode.print(SSTR("UNDEFINED"));
                     break;
                 }
                 CHECK_INDEX(request_index, 0, recv_requests.iv.size());
-//                cnode.print(
-//                    SSTR("MESSAGE FROM " <<
-//                         cnode.neighbor(recv_requests.iv[request_index].dir)));
                 const Iterations::Requests::Info &info
                         = recv_requests.iv[request_index];
-//                cnode.print(SSTR("info " << info.dir <<',' << request_index));
                 copy_data(recv_requests, request_index, MPI_OP_RECV);
                 calculate(info.dir);
             }
         }
         calculate_edge_values();
-        shift_arrays(); // update arrays
+        prepareSolution(next_step);
+        printDeviations(next_step);
         // async send prev
         if (next_step < clargs.K) {
-//            cnode.print("MPI_Waitall");
+            shift_arrays(); // update arrays
             MPI_Waitall(send_requests.v.size(),
                         send_requests.v.data(),
                         send_requests.statuses.data()); // wait for every asynchronous send (so we can use send buffers again)
             // asynchronous send to every neighbor processor
-//#           ifdef WITH_OMP
-//#               pragma omp parallel for // parallel recv
-//#           endif
             for (int i = 0; i < send_requests.size(); ++i) {
-//                cnode.print(SSTR("SEND TO " << cnode.neighbor(send_requests.iv[i].dir)));
                 copy_data(send_requests, i, MPI_OP_SEND);
 
                 MPI_Isend(send_requests.buffs[i].data(),
                           send_requests.buffs[i].size(),
                           MPI_TYPE_REAL,
                           cnode.neighbor(send_requests.iv[i].dir),
-                          TAG_BOUNDARY_ELEMENTS,
+                          next_step + 1,
                           MPI_COMM_WORLD,
                           &send_requests.v[i]);
             }
         }
-        first = false;
     } // ENDS STEPS
+}
+
+void Iterations::prepareSolution(uint n)
+{
+#ifdef WITH_OMP
+#   pragma omp parallel for
+#endif
+   for (int i = 0; i < ic; ++i) {
+       for (uint j = 0; j < jc; ++j) {
+           for (uint k = 0; k < kc; ++k) {
+               uint id = get_index(i, j, k);
+               analyticalSolution[id] = u(x(i), y(j), z(k), time(n));
+           }
+       }
+   }
+}
+
+void Iterations::printDeviation(uint i, uint j, uint k, uint n)
+{
+    printDeviationPrivate(array, i, j, k, n);
+}
+
+void Iterations::printDeviationPrivate(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n)
+{
+    uint id = get_index(i, j, k);
+    real correctAnswer = analyticalSolution[id];
+    real approxAnswer = arr[id];
+
+    cnode.print(SSTR("print " << id << " approx " << approxAnswer));
+    cnode.print(SSTR("print " << id << " u " << correctAnswer));
+
+    cnode.print(SSTR("n=" << n << " (" << i << ',' << j << ',' << k
+                     <<") DEV, CORR, APPROX: "
+                     << ABS(correctAnswer - approxAnswer)
+                     << ',' << ' ' << correctAnswer
+                         << ',' << ' ' << approxAnswer));
+}
+
+real Iterations::getDeviation(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n) const
+{
+    uint id = get_index(i, j, k);
+    real correctAnswer = analyticalSolution[id];
+    real approxAnswer = arr[id];
+
+    return ABS(correctAnswer - approxAnswer);
+}
+
+void Iterations::printDeviations(uint n)
+{
+    printDeviationsPrivate(array, n);
+}
+
+void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint n)
+{
+    prepareSolution(n);
+#ifdef WITH_OMP
+#   pragma omp parallel for
+#endif
+    real avgDeviation = 0;
+
+//    long long totalDevDiv = 0;
+    for (int i = 0; i < ic; ++i) {
+        for (uint j = 0; j < jc; ++j) {
+            for (uint k = 0; k < kc; ++k) {
+                avgDeviation += getDeviation(arr, i, j, k, n);
+//                uint index = get_index(i, j, k);
+//                avgDeviation += ABS(array[index]-arrayPP[index]);
+            }
+        }
+    }
+    real globalDeviation=0;
+    MPI_Reduce(&avgDeviation, &globalDeviation, 1, MPI_TYPE_REAL,
+               MPI_SUM, 0, MPI_COMM_WORLD);
+    if (cnode.mpi.rank == 0) {
+        cnode.print(SSTR("global deviation for step " << n << " equals "
+                         << avgDeviation / (double(N) * N * N)));
+    }
+
 }
 
 
@@ -152,7 +214,6 @@ void Iterations::fill(const ComputeNode &n)
     jc = N / n.gridDimensions.y;
     kc = N / n.gridDimensions.z;
 
-    // TODO
     int iMissedItemCount = N % n.gridDimensions.x;
     int jMissedItemCount = N % n.gridDimensions.y;
     int kMissedItemCount = N % n.gridDimensions.z;
@@ -168,39 +229,44 @@ void Iterations::fill(const ComputeNode &n)
     if (cnode.z < kMissedItemCount)
         ++kc;
 
-    imax = i0 + ic;
-    jmax = j0 + jc;
-    kmax = k0 + kc;
+    hx = VAL_LX / ic;
+    hy = VAL_LY / jc;
+    hz = VAL_LZ / kc;
 
-    hx = Lx / ic;
-    hy = Ly / jc;
-    hz = Lz / kc;
+    MY_ASSERT(ABS(hx - hy) < 0.0001);
+    MY_ASSERT(ABS(hx - hz) < 0.0001);
 
-    ht = T / clargs.K;
+
+    ht = VAL_T / clargs.K;
 
     bigsize = (ic + 2) * (jc + 2) * (kc + 2);
 
     // optimization (allocations may throw std::bad_alloc if no enough memory)
     try {
-    array.resize(bigsize);
-    arrayP.resize(bigsize);
-    arrayPP.resize(bigsize);
+        array.resize(bigsize);
+        arrayP.resize(bigsize);
+        arrayPP.resize(bigsize);
+        analyticalSolution.resize(bigsize);
 
-    for (int i = 0; i < DIR_SIZE; ++i) {
-        ConnectionDirection cdir = toCD(i);
-        if (n.is(cdir)) {
-            Requests::Info info;
-            info.dir = cdir;
+        for (int i = 0; i < DIR_SIZE; ++i) {
+            ConnectionDirection cdir = toCD(i);
+            if (n.is(cdir)) {
+                Requests::Info info;
+                info.dir = cdir;
 
-            send_requests.append(info, dir_size(cdir));
-            recv_requests.append(info, dir_size(cdir));
+                send_requests.append(info, dir_size(cdir));
+                recv_requests.append(info, dir_size(cdir));
+            }
+            else if (cdir != DIR_Y_PERIOD_FIRST &&
+                     cdir != DIR_Y_PERIOD_LAST) {
+                no_neighbour_edges.push_back(cdir);
+            }
         }
-    }
-//    cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
-//                     << " i0, j0, k0 (ic, jc, kc): "
-//                     << i0 << ',' << j0 << ',' << k0
-//                     << " (" << ic  << ',' << jc << ',' << kc << ")"
-//                     << std::endl));
+            cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
+                             << " i0, j0, k0 (ic, jc, kc): "
+                             << i0 << ',' << j0 << ',' << k0
+                             << " (" << ic  << ',' << jc << ',' << kc << ")"
+                             << std::endl));
     }
     catch(...) {
         MY_ASSERT(false);
@@ -211,9 +277,9 @@ void Iterations::copy_recv(RealVector &v, RealVector &a,
                            int i, int j, int k, uint offset)
 {
     CHECK_INDEX(offset, 0, v.size());
-    CHECK_INDEX(get_p_index(i, j, k), 0, a.size());
+    CHECK_INDEX(get_index(i, j, k), 0, a.size());
 
-    a[get_p_index(i, j, k)] = v[offset];
+    a[get_index(i, j, k)] = v[offset];
 //    cnode.print(SSTR("copy_recv " << i << ',' << j << ',' << k
 //                     << '(' << get_p_index(i, j, k) << ')'
 //                     << '=' << offset));
@@ -223,9 +289,9 @@ void Iterations::copy_send(RealVector &v, RealVector &a,
                            int i, int j, int k, uint offset)
 {
     CHECK_INDEX(offset, 0, v.size());
-    CHECK_INDEX(get_p_index(i, j, k), 0, a.size());
+    CHECK_INDEX(get_index(i, j, k), 0, a.size());
 
-    v[offset] = a[get_p_index(i, j, k)];
+    v[offset] = a[get_index(i, j, k)];
 //    cnode.print(SSTR("copy_send " << offset
 //                     << '=' << i << ',' << j << ',' << k
 //                     << '(' << get_p_index(i, j, k) << ')'));
@@ -238,6 +304,16 @@ void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
                                         : &Iterations::copy_recv);
     ConnectionDirection cdir= requests.iv[id].dir;
     RealVector &v = requests.buffs[id];
+
+    switch (type) {
+    case MPI_OP_RECV:
+        cnode.print(SSTR("RECEIVING FROM " << cnode.neighbor(cdir)));
+        break;
+    case MPI_OP_SEND:
+        cnode.print(SSTR("SENDING TO " << cnode.neighbor(cdir)));
+        break;
+    }
+
     uint offset = 0;
     switch (cdir) {
     case DIR_X:
@@ -317,6 +393,14 @@ void Iterations::calculate(ConnectionDirection cdir)
         break;
     }
     case DIR_Y_PERIOD_FIRST:
+    {
+        uint j = recvEdgeId(cdir);
+        for (uint i = 1; i < ic - 1; ++i) {
+            for (uint k = 1; k < kc - 1; ++k)
+                calculate(i, j, k);
+        }
+        break;
+    }
     case DIR_Y_PERIOD_LAST:
         // just copy
         break;
@@ -349,13 +433,11 @@ void Iterations::calculate_edge_values()
 void Iterations::calculate(uint i, uint j, uint k)
 {
     uint index = get_index(i, j, k);
-    uint p_index = get_p_index(i, j, k);
-    uint pp_index = index;
 
 //    cnode.print(SSTR("calculate " << i << ',' << j << ',' << k));
 
     CHECK_INDEX(index, 0, array.size());
-    CHECK_INDEX(p_index, 0, array.size());
+    CHECK_INDEX(index, 0, array.size());
     CHECK_INDEX(get_index(i-1,j,k), 0, array.size());
     CHECK_INDEX(get_index(i+1,j,k), 0, array.size());
     CHECK_INDEX(get_index(i,j-1,k), 0, array.size());
@@ -364,17 +446,17 @@ void Iterations::calculate(uint i, uint j, uint k)
     CHECK_INDEX(get_index(i,j,k+1), 0, array.size());
 
 
-    array[index] = 2 * arrayP[p_index] - arrayPP[pp_index]
+    array[index] = 2 * arrayP[index] - arrayPP[index]
             + ht * ht * (
-                (array[get_index(i-1,j,k)]
-                - 2 * arrayP[p_index]
-                + array[get_index(i+1,j,k)]) / hx / hx
-            + (array[get_index(i,j-1,k)]
-            - 2 * arrayP[p_index]
-            + array[get_index(i,j+1,k)]) / hy / hy
-            + (array[get_index(i,j,k-1)]
-            - 2 * arrayP[p_index]
-            + array[get_index(i,j,k+1)]) / hz / hz
+                (arrayP[get_index(i-1,j,k)]
+                - 2 * arrayP[index]
+                + arrayP[get_index(i+1,j,k)]) / hx / hx
+            + (arrayP[get_index(i,j-1,k)]
+            - 2 * arrayP[index]
+            + arrayP[get_index(i,j+1,k)]) / hy / hy
+            + (arrayP[get_index(i,j,k-1)]
+            - 2 * arrayP[index]
+            + arrayP[get_index(i,j,k+1)]) / hz / hz
             );
 }
 
@@ -402,12 +484,6 @@ void Iterations::shift_arrays()
 }
 
 uint Iterations::get_index(uint i, uint j, uint k) const
-{
-    return get_p_index(i,j,k);
-//        return (i * jc + j) * kc + k;
-}
-
-uint Iterations::get_p_index(uint i, uint j, uint k) const
 {
     return ((i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
 }

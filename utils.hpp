@@ -40,8 +40,8 @@ struct CommandLineArgs
     CommandLineArgs()
     {
         // default
-        K = 20;
-        N = 8;
+        K = 50;
+        N = 50;
     }
 
     void parse(int argc_, char **argv_);
@@ -73,7 +73,7 @@ struct ComputeNode
     void fillGridDimensions();
     void fillXYZ();
 
-    int toRank(uint i, uint j, uint k) const;
+    int toRank(int i, int j, int k) const;
 
     void print(const std::string &str) const;
     void error(const std::string &err) const;

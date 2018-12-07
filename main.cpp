@@ -10,9 +10,10 @@ int main(int argc, char **argv)
     cnode.init(); // rank, size
 
     std::vector<int> Ns;
-    Ns.push_back(128);
-    Ns.push_back(256);
-    Ns.push_back(512);
+    Ns.push_back(clargs.N);
+//    Ns.push_back(128);
+//    Ns.push_back(256);
+//    Ns.push_back(512);
 
     for (uint i = 0; i < Ns.size(); ++i) {
         int N = Ns[i];

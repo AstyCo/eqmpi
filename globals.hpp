@@ -14,18 +14,20 @@
 
 #include <cmath>
 
-#define SH(x) sinh(x) // different floating point precision *hf, *h, *hl
-#define CH(x) cosh(x) // different floating point precision *hf, *h, *hl
+#define SH(x) (sinh(x)) // different floating point precision *hf, *h, *hl
+#define CH(x) (cosh(x)) // different floating point precision *hf, *h, *hl
 
 #define SSTR( x ) static_cast< std::ostringstream & >( \
         ( std::ostringstream() << std::dec << x ) ).str()
 
-#ifndef MIN
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
-#endif
-#ifndef MAX
 #define MAX(a,b) ((a)<(b) ? (b) : (a))
-#endif
+#define ABS(a) ((a) > 0 ? (a) : (-(a)))
+
+#define VAL_LY (double(2*M_PI))
+#define VAL_LX (double(2*M_PI))
+#define VAL_LZ (double(2*M_PI))
+#define VAL_T (double(20))
 
 #define DEBUG
 #ifdef DEBUG
@@ -41,14 +43,10 @@ typedef unsigned int uint;
 
 #ifdef FLOAT_P
 typedef float real;
-#   ifndef MPI_TYPE_REAL
-#       define MPI_TYPE_REAL MPI_FLOAT
-#   endif
+#   define MPI_TYPE_REAL MPI_FLOAT
 #else
 typedef double real;
-#   ifndef MPI_TYPE_REAL
-#       define MPI_TYPE_REAL MPI_DOUBLE
-#   endif
+#   define MPI_TYPE_REAL MPI_DOUBLE
 #endif
 
 enum MPI_SENDRECV_TAGS
@@ -61,7 +59,12 @@ void Asserter(const char *file, int line);
 
 inline real phi(real x, real y, real z)
 {
-    return sin(x) * SH(y - M_PI) * sin(z);
+    return sin(x) * CH(y - VAL_LY/2) * sin(z);
+}
+
+inline real u(real x, real y, real z, real t)
+{
+    return phi(x, y, z) * cos(t);
 }
 
 // Δ = div grad
@@ -101,5 +104,6 @@ enum ConnectionDirection
     DIR_SIZE
 };
 ConnectionDirection toCD(int i);
+std::string CDtoString(ConnectionDirection cdir);
 
 #endif // GLOBALS_HPP

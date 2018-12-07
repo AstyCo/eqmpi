@@ -41,12 +41,6 @@ struct Iterations
 
     uint N;
 
-
-    static real T;
-    static real Lx;
-    static real Ly;
-    static real Lz;
-
     uint i0;
     uint j0;
     uint k0;
@@ -56,15 +50,11 @@ struct Iterations
     uint kc;  // counts
     uint bigsize;
 
-    uint imax;
-    uint jmax;
-    uint kmax;
-
     real hx;
     real hy;
     real hz;
 
-    uint ht; // delta t
+    real ht; // delta t
 
     RealVector array;
     RealVector arrayP;
@@ -84,6 +74,9 @@ struct Iterations
     RealVector recvZ;
     RealVector recvZm;
 
+    RealVector analyticalSolution;
+
+    std::vector<ConnectionDirection> no_neighbour_edges;
     Requests recv_requests;
     Requests send_requests;
 
@@ -94,6 +87,14 @@ struct Iterations
     void prepare();
     void run();
 
+    void prepareSolution(uint n);
+    void printDeviation(uint i, uint j, uint k, uint n);
+
+    void printDeviationPrivate(const RealVector &arr, uint i, uint j, uint k, uint n);
+    real getDeviation(const RealVector &arr, uint i, uint j, uint k, uint n) const;
+
+    void printDeviations(uint n);
+    void printDeviationsPrivate(const RealVector &arr, uint n);
 
     uint dir_size(ConnectionDirection cdir);
 
@@ -111,11 +112,10 @@ struct Iterations
 
     uint get_index(uint i, uint j, uint k) const;
 
-    uint get_p_index(uint i, uint j, uint k) const;
-
     real x(uint i) const { return (i0 + i) * hx;}
     real y(uint j) const { return (j0 + j) * hy;}
     real z(uint k) const { return (k0 + k) * hz;}
+    real time(uint n) const { return n * ht;} // n - iter
 
     void set_0th(uint i, uint j, uint k);
     void step0();

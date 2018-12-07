@@ -1,2 +1,2 @@
 #!/bin/bash
-make seqpol && make polall
+make seqpol && make pol

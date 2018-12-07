@@ -78,11 +78,12 @@ void ComputeNode::fillXYZ()
     x = yxRank / gridDimensions.y;
 }
 
-int ComputeNode::toRank(uint i, uint j, uint k) const
+int ComputeNode::toRank(int i, int j, int k) const
 {
-	if (i >= gridDimensions.x
-		|| j >= gridDimensions.y
-		|| k >= gridDimensions.z) {
+    if (i < 0 || j < 0 || k < 0
+            || i >= gridDimensions.x
+            || j >= gridDimensions.y
+            || k >= gridDimensions.z) {
 		return -1;
 	}
     return (i * gridDimensions.y + j) * gridDimensions.z + k;

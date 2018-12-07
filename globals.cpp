@@ -36,3 +36,18 @@ ConnectionDirection toCD(int i)
 {
     return static_cast<ConnectionDirection>(i);
 }
+
+std::string CDtoString(ConnectionDirection cdir)
+{
+    switch (cdir) {
+    case DIR_X: return std::string("DIR_X");
+    case DIR_MINUS_X: return std::string("DIR_MINUS_X");
+    case DIR_Y: return std::string("DIR_Y");
+    case DIR_MINUS_Y: return std::string("DIR_MINUS_Y");
+    case DIR_Z: return std::string("DIR_Z");
+    case DIR_MINUS_Z: return std::string("DIR_MINUS_Z");
+    case DIR_Y_PERIOD_FIRST: return std::string("DIR_Y_PERIOD_FIRST");
+    case DIR_Y_PERIOD_LAST: return std::string("DIR_Y_PERIOD_LAST");
+    case DIR_SIZE: return std::string("DIR_SIZE");
+    }
+}
