@@ -20,6 +20,12 @@
 #define SSTR( x ) static_cast< std::ostringstream & >( \
         ( std::ostringstream() << std::dec << x ) ).str()
 
+#ifndef MIN
+#define MIN(a,b) ((a)<(b) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a,b) ((a)<(b) ? (b) : (a))
+#endif
 
 #define DEBUG
 #ifdef DEBUG

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <stdlib.h> // exit
+
 void Asserter(const char *file, int line)
 {
     cnode.error(SSTR("ASSERT at FILE:" << file
@@ -15,6 +17,9 @@ void Asserter(const char *file, int line)
 MapGridDimensions getGridDimensions()
 {
     MapGridDimensions mts;
+
+    mts.insert(std::make_pair(20, GridDimensions(5, 2, 2)));
+    mts.insert(std::make_pair(160, GridDimensions(10, 4, 4)));
 
     mts.insert(std::make_pair(32, GridDimensions(4, 4, 2)));
     mts.insert(std::make_pair(128, GridDimensions(4, 4, 8)));

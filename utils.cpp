@@ -24,8 +24,7 @@ double randomize(double min, double max)
 void ComputeNode::init()
 {
 #ifdef WITH_OMP
-    omp_set_num_threads(4); // set the number of threads for this programm
-//    omp_set_dynamic(0); // allways use maximum number of threads (not less)
+    omp_set_num_threads(3); // set the number of threads for this programm (BlueGene/P)
 #endif
 
 	// Get the number of processes`

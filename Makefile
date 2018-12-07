@@ -1,6 +1,9 @@
 CC=mpixlcxx_r
-EXTRAS_CFLAGS=-qarch=450d -qtune=450 -qsmp=omp
-CFLAGS=-O3 -qstrict -qarch=450d -qtune=450 -qsmp=omp
+CCPOL=mpixlC
+EXTRAS_CFLAGS=-qsmp=omp
+BLUEGENE_FLAGS=-DBGP -qarch=450d -qtune=450
+POLUS_FLAGS=-DPOLUS -qarch=pwr8
+CFLAGS=-O3 -qstrict
 INC=
 INC_PARAMS=$(foreach d, $(INC), -I$d)
 LDFLAGS=-lm
@@ -13,10 +16,16 @@ ARGUMENTS=
 
 all: $(SOURCES) $(EXECUTABLE)
 	
-one:
+seqbgp:
 	$(CC) $(CFLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
-omp:
-	$(CC) $(CFLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
+ompbgp:
+	$(CC) $(CFLAGS) -qsmp=omp $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
+	
+seqpl:
+	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
+omppl:
+	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
+	
 clean: 
 	rm -rf *.o
 cl:
@@ -24,8 +33,13 @@ cl:
 	
 # submit polus
 pol:
-	# TODO
-	mpisubmit.pl -p 1 -w 00:05 -g ./$(EXECUTABLE) $(ARGUMENTS)
+	bsub <bsub_args
+polomp:
+	bsub <bsub_args_omp
+polall:
+	bsub <bsub_args
+	bsub <bsub_args_omp
+
 
 bsub_polus:
 	# TODO
@@ -33,17 +47,19 @@ bsub_polus:
 	
 # submit bluegene
 bgp: 
-	mpisubmit.bg -n 32 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
-ompb: 
-	mpisubmit.bg -n 32 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+bgpomp:
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 	
+
+bgpall: 
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
 	
 	
 run:
 	$(EXECUTABLE) $(ARGUMENTS)
-    
-$(EXECUTABLE): $(OBJECTS) 
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
-
-.cpp.o:
-	$(CC) $(INC_PARAMS) $(CFLAGS) $< -o $@
 	

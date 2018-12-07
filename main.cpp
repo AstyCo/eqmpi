@@ -25,8 +25,24 @@ int main(int argc, char **argv)
 
         MPI_Barrier(MPI_COMM_WORLD);
         prf.finish();
-        if (cnode.mpi.rank == 0)
-            std::cout << SSTR("SIZE " << N << " TIME " << prf.time()) << std::endl;
+        if (cnode.mpi.rank == 0) {
+            int nthread = 1;
+            std::string sc("U");
+#ifdef BGP
+            sc = "BGP";
+#endif
+#ifdef POLUS
+            sc = "POLUS";
+#endif
+#ifdef WITH_OMP
+            nthread = 3;
+#endif
+            std::cout << SSTR("###," << sc
+                              << ',' << cnode.mpi.procCount
+                              << ',' << nthread
+                              << ',' << N
+                              << ',' << prf.time() ) << std::endl;
+        }
 //        cnode.print(SSTR("SIZE " << N << " TIME " << prf.time()));
     }
 

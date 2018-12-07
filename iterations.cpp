@@ -1,5 +1,8 @@
 #include "iterations.hpp"
 
+#include <string.h>
+//#include <mem.h>
+
 real Iterations::T = 10;
 real Iterations::Lx = 2 * M_PI;
 real Iterations::Ly = 2 * M_PI;
@@ -150,13 +153,20 @@ void Iterations::fill(const ComputeNode &n)
     kc = N / n.gridDimensions.z;
 
     // TODO
-    MY_ASSERT(0 == N % n.gridDimensions.x);
-    MY_ASSERT(0 == N % n.gridDimensions.y);
-    MY_ASSERT(0 == N % n.gridDimensions.z);
+    int iMissedItemCount = N % n.gridDimensions.x;
+    int jMissedItemCount = N % n.gridDimensions.y;
+    int kMissedItemCount = N % n.gridDimensions.z;
 
-    i0 = n.x * ic;
-    j0 = n.y * jc;
-    k0 = n.z * kc;
+    i0 = MIN(n.x, iMissedItemCount) * (ic + 1) + MAX(n.x - iMissedItemCount, 0) * ic;
+    j0 = MIN(n.y, iMissedItemCount) * (jc + 1) + MAX(n.y - iMissedItemCount, 0) * jc;
+    k0 = MIN(n.z, iMissedItemCount) * (kc + 1) + MAX(n.z - iMissedItemCount, 0) * kc;
+
+    if (cnode.x < iMissedItemCount)
+        ++ic;
+    if (cnode.y < jMissedItemCount)
+        ++jc;
+    if (cnode.z < kMissedItemCount)
+        ++kc;
 
     imax = i0 + ic;
     jmax = j0 + jc;
