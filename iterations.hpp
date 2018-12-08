@@ -41,31 +41,31 @@ struct Iterations
 
     struct Indice
     {
-        int x, y, z, count;
+        int i, j, k;
 
         Indice(int x_, int y_, int z_)
-            : x(x_), y(y_), z(z_), count(1)
+            : i(x_), j(y_), k(z_)
         {}
 
-        bool operator==(const Indice &i) const
+        bool operator==(const Indice &ind) const
         {
-            return x == i.x && y == i.y && z == i.z;
+            return i == ind.i && j == ind.j && k == ind.k;
         }
     };
 
 
     typedef std::vector<Indice> IndiceVector;
 
-    uint N;
+    long N;
 
     uint i0;
     uint j0;
     uint k0;
 
-    uint ic;  // counts
-    uint jc;  // counts
-    uint kc;  // counts
-    uint bigsize;
+    long ic;  // counts
+    long jc;  // counts
+    long kc;  // counts
+    long bigsize;
 
     real hx;
     real hy;
@@ -134,7 +134,7 @@ struct Iterations
 
     void prepareEdgeIndices();
 
-    uint get_index(uint i, uint j, uint k) const;
+    long get_index(uint i, uint j, uint k) const;
     uint get_exact_index(uint i, uint j, uint k) const;
 
     real x(uint i) const { return (i0 + i) * hx;}

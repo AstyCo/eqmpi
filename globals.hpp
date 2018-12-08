@@ -24,10 +24,10 @@
 #define MAX(a,b) ((a)<(b) ? (b) : (a))
 #define ABS(a) ((a) > 0 ? (a) : (-(a)))
 
-#define VAL_LY (double(2*M_PI))
-#define VAL_LX (double(2*M_PI))
-#define VAL_LZ (double(2*M_PI))
-#define VAL_T (double(20))
+#define VAL_LY (double(M_PI))
+#define VAL_LX (double(M_PI))
+#define VAL_LZ (double(M_PI))
+#define VAL_T (0.01)
 
 #define DEBUG
 #ifdef DEBUG

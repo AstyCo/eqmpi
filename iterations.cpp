@@ -26,11 +26,9 @@ Iterations::Iterations(uint N_)
 void Iterations::prepare()
 {
 	step0();
-    next_step = 2;
-    printArrayDebug();
-//    printDeviationsPrivate(arrayPP, 0);
-//	step1();
-//    printDeviationsPrivate(arrayP, 1);
+    printDeviationsPrivate(arrayPP, 0);
+    step1();
+    printDeviationsPrivate(arrayP, 1);
 }
 
 
@@ -39,8 +37,6 @@ void Iterations::run()
     MY_ASSERT(next_step == 2);
 	// STEPS
     for (; next_step < clargs.K + 1; ++next_step) {
-        if (next_step > 5)
-            return;
 
         async_recv_all();
         async_send_all();
@@ -77,10 +73,8 @@ void Iterations::run()
         }
         calculate_edge_values();
 
-//        prepareSolution(next_step);
-//        printDeviations(next_step);
-
-        printArrayDebug();
+        prepareSolution(next_step);
+        printDeviations(next_step);
 
         if (next_step < clargs.K)
             shift_arrays(); // update arrays
@@ -128,7 +122,7 @@ void Iterations::prepareSolution(uint n)
    for (int i = 0; i < ic; ++i) {
        for (uint j = 0; j < jc; ++j) {
            for (uint k = 0; k < kc; ++k) {
-               uint id = get_index(i, j, k);
+               long id = get_index(i, j, k);
                analyticalSolution[id] = u(x(i), y(j), z(k), time(n));
            }
        }
@@ -142,7 +136,7 @@ void Iterations::printDeviation(uint i, uint j, uint k, uint n)
 
 void Iterations::printDeviationPrivate(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n)
 {
-    uint id = get_index(i, j, k);
+    long id = get_index(i, j, k);
     real correctAnswer = analyticalSolution[id];
     real approxAnswer = arr[id];
 
@@ -158,7 +152,7 @@ void Iterations::printDeviationPrivate(const Iterations::RealVector &arr, uint i
 
 real Iterations::getDeviation(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n) const
 {
-    uint id = get_index(i, j, k);
+    long long id = get_index(i, j, k);
     real correctAnswer = analyticalSolution[id];
     real approxAnswer = arr[id];
 
@@ -183,17 +177,19 @@ void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint 
         for (uint j = 0; j < jc; ++j) {
             for (uint k = 0; k < kc; ++k) {
                 avgDeviation += getDeviation(arr, i, j, k, n);
-//                uint index = get_index(i, j, k);
-//                avgDeviation += ABS(array[index]-arrayPP[index]);
             }
         }
     }
     real globalDeviation=0;
     MPI_Reduce(&avgDeviation, &globalDeviation, 1, MPI_TYPE_REAL,
                MPI_SUM, 0, MPI_COMM_WORLD);
+
+    long size = ic * jc * kc;
+    cnode.print(SSTR("local delta for step " << n << " equals "
+                     << avgDeviation / size));
     if (cnode.mpi.rank == 0) {
-        cnode.print(SSTR("global deviation for step " << n << " equals "
-                         << avgDeviation / (double(N) * N * N)));
+        cnode.print(SSTR("global delta for step " << n << " equals "
+                         << globalDeviation / (N * N * N)));
     }
 
 }
@@ -234,8 +230,8 @@ void Iterations::fill(const ComputeNode &n)
     int kMissedItemCount = N % n.gridDimensions.z;
 
     i0 = MIN(n.x, iMissedItemCount) * (ic + 1) + MAX(n.x - iMissedItemCount, 0) * ic;
-    j0 = MIN(n.y, iMissedItemCount) * (jc + 1) + MAX(n.y - iMissedItemCount, 0) * jc;
-    k0 = MIN(n.z, iMissedItemCount) * (kc + 1) + MAX(n.z - iMissedItemCount, 0) * kc;
+    j0 = MIN(n.y, jMissedItemCount) * (jc + 1) + MAX(n.y - jMissedItemCount, 0) * jc;
+    k0 = MIN(n.z, kMissedItemCount) * (kc + 1) + MAX(n.z - kMissedItemCount, 0) * kc;
 
     if (cnode.x < iMissedItemCount)
         ++ic;
@@ -417,20 +413,19 @@ void Iterations::calculate(ConnectionDirection cdir)
 
 void Iterations::calculate_edge_values()
 {
-    for (uint i = 0; i < edgeIndeces.size(); ++i) {
+    for (long i = 0; i < edgeIndeces.size(); ++i) {
         const Indice &ind = edgeIndeces[i];
-        calculate(ind.x, ind.y, ind.z);
+        calculate(ind.i, ind.j, ind.k);
     }
 }
 
 void Iterations::calculate(uint i, uint j, uint k)
 {
-    uint index = get_index(i, j, k);
+    long index = get_index(i, j, k);
 
-    array[index]++;
+//    array[index]++;
 //    cnode.print(SSTR("calculate " << i << ',' << j << ',' << k));
-    return;
-
+//    return;
 
     CHECK_INDEX(index, 0, array.size());
     CHECK_INDEX(index, 0, array.size());
@@ -484,7 +479,7 @@ void Iterations::prepareEdgeIndices()
 {
     std::vector<int> tmp;
     tmp.resize(ic * jc * kc);
-    for (int i = 0; i < tmp.size(); ++i)
+    for (long i = 0; i < tmp.size(); ++i)
         tmp[i] = 0;
 
     for (uint i = 0; i < ic; ++i) {
@@ -577,7 +572,7 @@ void Iterations::prepareEdgeIndices()
         }
     }
 
-    for (int i = 0; i < tmp.size(); ++i) {
+    for (long i = 0; i < tmp.size(); ++i) {
         if (!tmp[i])
             continue;
         int vz = i % kc;
@@ -587,26 +582,24 @@ void Iterations::prepareEdgeIndices()
 
         edgeIndeces.push_back(Indice(vx, vy, vz));
     }
-
+    cnode.print(SSTR("edgeIndices size " << edgeIndeces.size()));
 }
 
-uint Iterations::get_index(uint i, uint j, uint k) const
+long Iterations::get_index(uint i, uint j, uint k) const
 {
-    return ((i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
+    return (long(i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
 }
 
 uint Iterations::get_exact_index(uint i, uint j, uint k) const
 {
-    return (i*jc + j) * kc + k;
+    return (long(i)*jc + j) * kc + k;
 }
 
 void Iterations::set_0th(uint i, uint j, uint k)
 {
-    uint index = get_index(i, j, k);
+    long index = get_index(i, j, k);
     CHECK_INDEX(index, 0, arrayPP.size());
-//    arrayPP[index] = phi(x(i), y(j), z(k));
-    array[index] = ((i + i0) * N + (j + j0))*N + k + k0;
-    arrayP[index] = ((i + i0) * N + (j + j0))*N + k + k0;
+    arrayPP[index] = phi(x(i), y(j), z(k));
 }
 
 
@@ -619,7 +612,7 @@ void Iterations::step0()
 
 void Iterations::set_1th(uint i, uint j, uint k)
 {
-    uint index = get_index(i, j, k);
+    long index = get_index(i, j, k);
     CHECK_INDEX(index, 0, arrayP.size());
     arrayP[index] = arrayPP[index] + ht * ht / 2 * div_grad_phi(x(i), y(j), z(k));
 }

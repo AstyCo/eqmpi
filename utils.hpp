@@ -40,8 +40,8 @@ struct CommandLineArgs
     CommandLineArgs()
     {
         // default
-        K = 50;
-        N = 8;
+        K = 500;
+        N = 28;
     }
 
     void parse(int argc_, char **argv_);
