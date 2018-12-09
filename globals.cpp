@@ -50,6 +50,8 @@ std::string CDtoString(ConnectionDirection cdir)
     case DIR_Y_PERIOD_LAST: return std::string("DIR_Y_PERIOD_LAST");
     case DIR_SIZE: return std::string("DIR_SIZE");
     }
+    MY_ASSERT(false);
+    return std::string();
 }
 
 ConnectionDirection CDPair(ConnectionDirection cdir)

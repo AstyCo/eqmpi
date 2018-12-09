@@ -10,16 +10,26 @@ LDFLAGS=-lm
 SOURCES=iterations.cpp globals.cpp utils.cpp main.cpp 
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=t2
+EXECUTABLE_FLOAT=t2_float
 EXECUTABLE_OMP=t2_omp
+EXECUTABLE_OMP_FLOAT=t2_omp_float
 ARGUMENTS=
 
 
 all: $(SOURCES) $(EXECUTABLE)
 	
+bgpcanc:
+	llcancel -u edu-cmc-skmodel18-624-03
+	
 seqbgp:
 	$(CC) $(CFLAGS) $(BLUEGENE_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
+seqbgpf:
+	$(CC) $(CFLAGS) $(BLUEGENE_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DFLOAT_P -o $(EXECUTABLE_FLOAT)
+	
 ompbgp:
 	$(CC) $(CFLAGS) $(BLUEGENE_FLAGS) $(OMP_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
+ompbgpf:
+	$(CC) $(CFLAGS) $(BLUEGENE_FLAGS) $(OMP_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -DFLOAT_P -o $(EXECUTABLE_OMP_FLOAT)
 	
 seqpol:
 	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
@@ -41,15 +51,39 @@ polall:
 	
 # submit bluegene
 bgp: 
-	mpisubmit.bg -n 1 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE)
 
-bgpall: 
-	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+bgpall:
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
 	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
-	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
 	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
-	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE)
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
 	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	
+bgpsep:
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=128
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=256
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=512
+	
+bgp512:
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=512
+	
+bgp1024:
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1024
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1024
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1024
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1024
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1024
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1024
+	
+bgp1536:
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1536
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1536
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1536
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1536
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1536
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1536
 	
 	
 run:

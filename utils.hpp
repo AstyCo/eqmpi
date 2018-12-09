@@ -34,14 +34,16 @@ struct CommandLineArgs
     int argc;
     char **argv;
 
-    uint K;
-    uint N;
+    int K;
+    int N;
+    bool deviation;
 
     CommandLineArgs()
     {
         // default
-        K = 500;
-        N = 28;
+        K = 20;
+        N = -1;
+        deviation = false;
     }
 
     void parse(int argc_, char **argv_);
@@ -58,6 +60,13 @@ struct ComputeNode
         uint rank;
         uint procCount;
     } mpi;
+
+    enum Supercomputer
+    {
+        SCPolus,
+        SCBluegeneP
+    } sc;
+    std::string scTag() const;
 
 
     GridDimensions gridDimensions;

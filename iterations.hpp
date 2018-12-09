@@ -110,9 +110,7 @@ struct Iterations
     void async_recv_all();
 
     void prepareSolution(uint n);
-    void printDeviation(uint i, uint j, uint k, uint n);
 
-    void printDeviationPrivate(const RealVector &arr, uint i, uint j, uint k, uint n);
     real getDeviation(const RealVector &arr, uint i, uint j, uint k, uint n) const;
 
     void printDeviations(uint n);

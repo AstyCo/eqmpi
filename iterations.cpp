@@ -26,9 +26,9 @@ Iterations::Iterations(uint N_)
 void Iterations::prepare()
 {
 	step0();
-    printDeviationsPrivate(arrayPP, 0);
+//    printDeviationsPrivate(arrayPP, 0);
     step1();
-    printDeviationsPrivate(arrayP, 1);
+//    printDeviationsPrivate(arrayP, 1);
 }
 
 
@@ -73,9 +73,10 @@ void Iterations::run()
         }
         calculate_edge_values();
 
-        prepareSolution(next_step);
-        printDeviations(next_step);
-
+        if (clargs.deviation) {
+            prepareSolution(next_step);
+            printDeviations(next_step);
+        }
         if (next_step < clargs.K)
             shift_arrays(); // update arrays
     } // ENDS STEPS
@@ -129,27 +130,6 @@ void Iterations::prepareSolution(uint n)
    }
 }
 
-void Iterations::printDeviation(uint i, uint j, uint k, uint n)
-{
-    printDeviationPrivate(array, i, j, k, n);
-}
-
-void Iterations::printDeviationPrivate(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n)
-{
-    long id = get_index(i, j, k);
-    real correctAnswer = analyticalSolution[id];
-    real approxAnswer = arr[id];
-
-    cnode.print(SSTR("print " << id << " approx " << approxAnswer));
-    cnode.print(SSTR("print " << id << " u " << correctAnswer));
-
-    cnode.print(SSTR("n=" << n << " (" << i << ',' << j << ',' << k
-                     <<") DEV, CORR, APPROX: "
-                     << ABS(correctAnswer - approxAnswer)
-                     << ',' << ' ' << correctAnswer
-                         << ',' << ' ' << approxAnswer));
-}
-
 real Iterations::getDeviation(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n) const
 {
     long long id = get_index(i, j, k);
@@ -167,15 +147,23 @@ void Iterations::printDeviations(uint n)
 void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint n)
 {
     prepareSolution(n);
+
+    real avgDeviation = 0;
+    real corr = 0, appr = 0;
+
 #ifdef WITH_OMP
 #   pragma omp parallel for
 #endif
-    real avgDeviation = 0;
-
-//    long long totalDevDiv = 0;
     for (int i = 0; i < ic; ++i) {
         for (uint j = 0; j < jc; ++j) {
             for (uint k = 0; k < kc; ++k) {
+                long long id = get_index(i, j, k);
+                real correctAnswer = analyticalSolution[id];
+                real approxAnswer = arr[id];
+
+                corr += correctAnswer;
+                appr += approxAnswer;
+
                 avgDeviation += getDeviation(arr, i, j, k, n);
             }
         }
@@ -183,13 +171,21 @@ void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint 
     real globalDeviation=0;
     MPI_Reduce(&avgDeviation, &globalDeviation, 1, MPI_TYPE_REAL,
                MPI_SUM, 0, MPI_COMM_WORLD);
+    globalDeviation /= N*N*N;
 
-    long size = ic * jc * kc;
-    cnode.print(SSTR("local delta for step " << n << " equals "
-                     << avgDeviation / size));
+//    long size = ic * jc * kc;
+//    avgDeviation /= size;
+//    if (avgDeviation > 0.01) {
+//        cnode.print(SSTR("local delta for step " << n << " equals "
+//                         << avgDeviation << " app " << appr << " corr " << corr));
+//    }
+
     if (cnode.mpi.rank == 0) {
-        cnode.print(SSTR("global delta for step " << n << " equals "
-                         << globalDeviation / (N * N * N)));
+        std::cout << SSTR("%%%," << cnode.scTag()
+                         << ',' << cnode.mpi.procCount
+                         << ',' << N
+                         << ',' << next_step
+                         << ',' << globalDeviation) << std::endl;
     }
 
 }
@@ -244,9 +240,6 @@ void Iterations::fill(const ComputeNode &n)
     hy = VAL_LY / jc;
     hz = VAL_LZ / kc;
 
-    MY_ASSERT(ABS(hx - hy) < 0.0001);
-    MY_ASSERT(ABS(hx - hz) < 0.0001);
-
 
     ht = VAL_T / clargs.K;
 
@@ -254,10 +247,12 @@ void Iterations::fill(const ComputeNode &n)
 
     // optimization (allocations may throw std::bad_alloc if no enough memory)
     try {
+        prepareEdgeIndices();
         array.resize(bigsize);
         arrayP.resize(bigsize);
         arrayPP.resize(bigsize);
-        analyticalSolution.resize(bigsize);
+        if (clargs.deviation)
+            analyticalSolution.resize(bigsize);
 
         for (int i = 0; i < DIR_SIZE; ++i) {
             ConnectionDirection cdir = toCD(i);
@@ -268,17 +263,7 @@ void Iterations::fill(const ComputeNode &n)
                 send_requests.append(info, dir_size(cdir));
                 recv_requests.append(info, dir_size(cdir));
             }
-            //            else if (cdir != DIR_Y_PERIOD_FIRST &&
-            //                     cdir != DIR_Y_PERIOD_LAST) {
-            //                no_neighbour_edges.push_back(cdir);
-            //            }
         }
-        prepareEdgeIndices();
-        cnode.print(SSTR("(x, y, z): (" << n.x << ',' << n.y << ',' << n.z << ')'
-                         << " i0, j0, k0 (ic, jc, kc): "
-                         << i0 << ',' << j0 << ',' << k0
-                         << " (" << ic  << ',' << jc << ',' << kc << ")"
-                         << std::endl));
     }
     catch(...) {
         MY_ASSERT(false);
@@ -292,9 +277,6 @@ void Iterations::copy_recv(RealVector &v, RealVector &a,
     CHECK_INDEX(get_index(i, j, k), 0, a.size());
 
     a[get_index(i, j, k)] = v[offset];
-//    cnode.print(SSTR("copy_recv " << i << ',' << j << ',' << k
-//                     << '(' << get_p_index(i, j, k) << ')'
-//                     << '=' << offset));
 }
 
 void Iterations::copy_send(RealVector &v, RealVector &a,
@@ -527,6 +509,8 @@ void Iterations::prepareEdgeIndices()
             }
             break;
         case DIR_Y:
+            if (cnode.hasNeighbor(DIR_Y_PERIOD_FIRST))
+                continue;
             for (uint i = 0; i < ic; ++i) {
                 tmp[get_exact_index(i, jc - 1, 0)] = 0;
                 tmp[get_exact_index(i, jc - 1, kc - 1)] = 0;
@@ -582,7 +566,6 @@ void Iterations::prepareEdgeIndices()
 
         edgeIndeces.push_back(Indice(vx, vy, vz));
     }
-    cnode.print(SSTR("edgeIndices size " << edgeIndeces.size()));
 }
 
 long Iterations::get_index(uint i, uint j, uint k) const
@@ -607,6 +590,7 @@ void Iterations::step0()
 {
     MY_ASSERT(next_step == 0);
     it_for_each(&Iterations::set_0th);
+    memcpy(array.data(), arrayPP.data(), bigsize * sizeof(real));
     next_step = 1;
 }
 

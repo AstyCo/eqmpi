@@ -21,10 +21,27 @@ double randomize(double min, double max)
     return min + (static_cast<double>(rand()) / RAND_MAX) * (max - min);
 }
 
+std::string ComputeNode::scTag() const
+{
+    switch (sc) {
+    case SCPolus: return "POL";
+    case SCBluegeneP: return "BGP";
+    }
+    MY_ASSERT(false);
+    return std::string();
+}
+
 void ComputeNode::init()
 {
 #ifdef WITH_OMP
     omp_set_num_threads(3); // set the number of threads for this programm (BlueGene/P)
+#endif
+
+#ifdef BGP
+    sc = SCBluegeneP;
+#endif
+#ifdef POLUS
+    sc = SCPolus;
 #endif
 
 	// Get the number of processes`
@@ -215,8 +232,13 @@ void CommandLineArgs::parseArg(char arg[])
 {
     const char s_K [] = "K=";
     const char s_N [] = "N=";
+    const char s_Deviation [] = "deviation";
 
     std::string sarg(arg);
+    if (sarg.find(s_Deviation) != std::string::npos) {
+        deviation = true;
+        return;
+    }
     if (sarg.find(s_K) != std::string::npos) {
         long tmp = strtol(sarg.c_str() + sizeof(s_K) - 1,
                          NULL, 10);

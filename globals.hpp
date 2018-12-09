@@ -49,29 +49,24 @@ typedef double real;
 #   define MPI_TYPE_REAL MPI_DOUBLE
 #endif
 
-enum MPI_SENDRECV_TAGS
-{
-    TAG_BOUNDARY_ELEMENTS
-};
-
-
 void Asserter(const char *file, int line);
 
 inline real phi(real x, real y, real z)
 {
-    return sin(x) * CH(y - VAL_LY/2) * sin(z);
+    return sin(x) * cos(y - VAL_LY/2) * sin(z);
 }
 
 inline real u(real x, real y, real z, real t)
 {
-    return phi(x, y, z) * cos(t);
+    static real sqrt3 = sqrt(3.0);
+    return phi(x, y, z) * cos(sqrt3 * t);
 }
 
 // Δ = div grad
 // Δ phi = (d/dx^2 + d/dy^2 + d/dz^2) phi
 inline real div_grad_phi(real x, real y, real z)
 {
-    return -phi(x, y, z); // sh(x)' = ch(x), ch(x)' = sh(x)
+    return -3.0 * phi(x, y, z);
 }
 
 struct GridDimensions
