@@ -8,6 +8,7 @@
 #include <ctime>
 #include <cstring>
 
+Profiler profiler;
 CommandLineArgs clargs;
 ComputeNode cnode;
 
@@ -155,11 +156,16 @@ public:
         _started = false;
     }
 
-    void finish()
+    void step()
     {
         MY_ASSERT(_started);
 
         _wall_clock_elapsed = MPI_Wtime() - _wstart;
+    }
+
+    void finish()
+    {
+        step();
 
         clear();
     }
@@ -192,7 +198,6 @@ private:
 Profiler::Profiler(Profiler::Options opts)
     : _impl(new ProfilerPrivate(opts))
 {
-    start();
 }
 
 Profiler::~Profiler()
@@ -203,6 +208,11 @@ Profiler::~Profiler()
 void Profiler::start()
 {
     _impl->start();
+}
+
+void Profiler::step()
+{
+    _impl->step();
 }
 
 void Profiler::finish()

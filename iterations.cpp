@@ -37,7 +37,8 @@ void Iterations::run()
     MY_ASSERT(next_step == 2);
 	// STEPS
     for (; next_step < clargs.K + 1; ++next_step) {
-
+        profiler.step();
+        cnode.print(SSTR("ITER " << next_step << ',' << profiler.time()));
         async_recv_all();
         async_send_all();
 
@@ -476,7 +477,7 @@ void Iterations::prepareEdgeIndices()
         tmp[get_exact_index(ic - 1, j, 0)] = 1;
         tmp[get_exact_index(ic - 1, j, kc - 1)] = 1;
     }
-    for (uint k = 1; k < kc; ++k) {
+    for (uint k = 0; k < kc; ++k) {
         tmp[get_exact_index(0, 0, k)] = 1;
         tmp[get_exact_index(0, jc - 1, k)] = 1;
         tmp[get_exact_index(ic - 1, 0, k)] = 1;
@@ -559,10 +560,10 @@ void Iterations::prepareEdgeIndices()
     for (long i = 0; i < tmp.size(); ++i) {
         if (!tmp[i])
             continue;
-        int vz = i % kc;
-        int vxy = i / kc;
-        int vy = vxy % jc;
-        int vx = vxy / jc;
+        long vz = i % kc;
+        long vxy = i / kc;
+        long vy = vxy % jc;
+        long vx = vxy / jc;
 
         edgeIndeces.push_back(Indice(vx, vy, vz));
     }
@@ -573,7 +574,7 @@ long Iterations::get_index(uint i, uint j, uint k) const
     return (long(i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
 }
 
-uint Iterations::get_exact_index(uint i, uint j, uint k) const
+long Iterations::get_exact_index(uint i, uint j, uint k) const
 {
     return (long(i)*jc + j) * kc + k;
 }

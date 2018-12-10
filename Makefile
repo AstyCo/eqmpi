@@ -33,6 +33,8 @@ ompbgpf:
 	
 seqpol:
 	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE)
+seqpolf:
+	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -o $(EXECUTABLE_FLOAT)
 omppol:
 	$(CCPOL) $(CFLAGS) $(POLUS_FLAGS) $(OMP_FLAGS) $(INC_PARAMS) $(LDFLAGS) $(SOURCES) -DWITH_OMP -o $(EXECUTABLE_OMP)
 	
@@ -55,19 +57,25 @@ bgp:
 
 bgpall:
 	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
-	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
 	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
-	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
 	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
-	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP) 
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
 	
 bgpsep:
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=128
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=256
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=512
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=128
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=256
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=512
 	
 bgp512:
-	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=512
+	mpisubmit.bg -n 1 -m SMP -w 00:30:00 $(EXECUTABLE_FLOAT) N=512
+bgp512omp:
+	mpisubmit.bg -n 1 -m SMP -w 00:30:00 $(EXECUTABLE_OMP_FLOAT) N=512
+
 	
 bgp1024:
 	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1024

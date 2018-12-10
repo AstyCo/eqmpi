@@ -28,14 +28,13 @@ int main(int argc, char **argv)
     for (uint i = 0; i < Ns.size(); ++i) {
         int N = Ns[i];
 
-        Profiler prf;
-
+        profiler.start();
         Iterations its(N); // iterations parameters, send/recv buffers
         its.prepare();
         its.run();
 
         MPI_Barrier(MPI_COMM_WORLD);
-        prf.finish();
+        profiler.finish();
         if (cnode.mpi.rank == 0) {
             int nthread = 1;
             std::string sc("U");
@@ -52,7 +51,7 @@ int main(int argc, char **argv)
                               << ',' << cnode.mpi.procCount
                               << ',' << nthread
                               << ',' << N
-                              << ',' << prf.time() ) << std::endl;
+                              << ',' << profiler.time() ) << std::endl;
         }
 //        cnode.print(SSTR("SIZE " << N << " TIME " << prf.time()));
     }

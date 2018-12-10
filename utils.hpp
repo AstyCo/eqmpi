@@ -20,6 +20,7 @@ public:
     ~Profiler();
 
     void start();
+    void step();
     void finish();
 
     double time() const;
@@ -28,6 +29,8 @@ public:
 private:
     ProfilerPrivate *_impl;
 };
+
+extern Profiler profiler;
 
 struct CommandLineArgs
 {
