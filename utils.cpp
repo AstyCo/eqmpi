@@ -104,6 +104,12 @@ void ComputeNode::print(const std::string &str) const
     std::cout << titledStr(str) << std::endl;
 }
 
+void ComputeNode::print0(const std::string &str) const
+{
+    if (cnode.mpi.rank == 0)
+        print(str);
+}
+
 void ComputeNode::error(const std::string &err) const
 {
     std::cerr << titledStr(err) << std::endl;

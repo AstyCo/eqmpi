@@ -46,7 +46,7 @@ struct CommandLineArgs
         // default
         K = 20;
         N = -1;
-        deviation = true;
+        deviation = false;
     }
 
     void parse(int argc_, char **argv_);
@@ -88,6 +88,7 @@ struct ComputeNode
     int toRank(int i, int j, int k) const;
 
     void print(const std::string &str) const;
+    void print0(const std::string &str) const;
     void error(const std::string &err) const;
 private:
     std::string titledStr(const std::string &str) const;

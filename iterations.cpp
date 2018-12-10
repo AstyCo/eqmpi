@@ -35,6 +35,8 @@ void Iterations::run()
     MY_ASSERT(next_step == 2);
 	// STEPS
     for (; next_step < clargs.K + 1; ++next_step) {
+//        profiler.step();
+//        cnode.print(SSTR("ITER " << next_step << profiler.time()));
         async_recv_all();
         async_send_all();
 

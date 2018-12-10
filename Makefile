@@ -100,6 +100,8 @@ bgp1536:
 	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT) N=1536
 	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) N=1536
 	
+cuda: 
+	nvcc -rdc=true -arch=sm_60 -ccbin mpixlC -Xcompiler -O0,-qarch=pwr8,-qstrict,-Wall cuda.cu $(SOURCES) -o t3
 	
 run:
 	$(EXECUTABLE) $(ARGUMENTS)
