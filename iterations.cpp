@@ -52,12 +52,34 @@ void Iterations::run()
 
             MPI_Waitall(recv_requests.v.size(),
                         recv_requests.v.data(),
-                        &status);
+                        recv_requests.statuses.data());
             for (uint i = 0; i < recv_requests.size(); ++i)
                 copy_data(recv_requests, i, MPI_OP_RECV);
             calculate_edge_values();
         }
 
+        if (clargs.deviation) {
+            prepareSolution(next_step);
+            printDeviations(next_step);
+        }
+        if (next_step < clargs.K)
+            shift_arrays(); // update arrays
+    } // ENDS STEPS
+}
+
+void Iterations::seqRun()
+{
+    MY_ASSERT(next_step == 2);
+    // STEPS
+    for (; next_step < clargs.K + 1; ++next_step) {
+        copy_seq_periodic();
+        for (int i = 1; i < ic - 1; ++i) {
+            for (uint j = 1; j < jc; ++j) {
+                for (uint k = 1; k < kc - 1; ++k) {
+                    calculate(i, j, k);
+                }
+            }
+        }
         if (clargs.deviation) {
             prepareSolution(next_step);
             printDeviations(next_step);
@@ -415,9 +437,18 @@ void Iterations::shift_arrays()
 {
     uint byteSize = bigsize * sizeof(real);
 
-//    // array -> arrayP, arrayP -> arrayPP
+    // array -> arrayP, arrayP -> arrayPP
     memcpy(arrayPP.data(), arrayP.data(), byteSize);
     memcpy(arrayP.data(), array.data(), byteSize);
+}
+
+void Iterations::copy_seq_periodic()
+{
+    for (uint i = 1; i < ic - 1; ++i) {
+        for (uint k = 1; k < kc - 1; ++k) {
+            arrayP[get_index(i, jc, k)] = arrayP[get_index(i, 1, k)];
+        }
+    }
 }
 
 void Iterations::prepareEdgeIndices()

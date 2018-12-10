@@ -104,7 +104,9 @@ struct Iterations
     Iterations(uint N_);
 
     void prepare();
+
     void run();
+    void seqRun();
 
     void async_send_all();
     void async_recv_all();
@@ -129,6 +131,7 @@ struct Iterations
     void calculate_edge_values();
    	void it_for_each(IndexesMFuncPtr func);
     void shift_arrays();
+    void copy_seq_periodic();
 
     void prepareEdgeIndices();
 

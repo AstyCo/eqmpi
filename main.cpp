@@ -19,12 +19,17 @@ int main(int argc, char **argv)
     }
 
     for (uint i = 0; i < Ns.size(); ++i) {
+        cnode.print("NEW_ITER");
         int N = Ns[i];
 
         profiler.start();
         Iterations its(N); // iterations parameters, send/recv buffers
         its.prepare();
+#ifdef SEQ
+        its.seqRun();
+#else
         its.run();
+#endif
 
         MPI_Barrier(MPI_COMM_WORLD);
         profiler.finish();
