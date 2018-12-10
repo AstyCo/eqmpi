@@ -19,7 +19,6 @@ int main(int argc, char **argv)
     }
 
     for (uint i = 0; i < Ns.size(); ++i) {
-        cnode.print("NEW_ITER");
         int N = Ns[i];
 
         profiler.start();

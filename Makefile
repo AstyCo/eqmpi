@@ -72,6 +72,7 @@ bgpsep:
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=128
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=256
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=512
+bgpsepomp:
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=128
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=256
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=512
