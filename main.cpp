@@ -25,11 +25,10 @@ int main(int argc, char **argv)
         profiler.start();
         Iterations its(N); // iterations parameters, send/recv buffers
         its.prepare();
-#ifdef SEQ
-        its.seqRun();
-#else
-        its.run();
-#endif
+        if (cnode.mpi.procCount == 1)
+            its.seqRun();
+        else
+            its.run();
 
         MPI_Barrier(MPI_COMM_WORLD);
         profiler.finish();
