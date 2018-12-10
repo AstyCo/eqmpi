@@ -37,8 +37,6 @@ void Iterations::run()
     MY_ASSERT(next_step == 2);
 	// STEPS
     for (; next_step < clargs.K + 1; ++next_step) {
-        profiler.step();
-        cnode.print(SSTR("ITER " << next_step << ',' << profiler.time()));
         async_recv_all();
         async_send_all();
 
@@ -173,13 +171,6 @@ void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint 
     MPI_Reduce(&avgDeviation, &globalDeviation, 1, MPI_TYPE_REAL,
                MPI_SUM, 0, MPI_COMM_WORLD);
     globalDeviation /= N*N*N;
-
-//    long size = ic * jc * kc;
-//    avgDeviation /= size;
-//    if (avgDeviation > 0.01) {
-//        cnode.print(SSTR("local delta for step " << n << " equals "
-//                         << avgDeviation << " app " << appr << " corr " << corr));
-//    }
 
     if (cnode.mpi.rank == 0) {
         std::cout << SSTR("%%%," << cnode.scTag()

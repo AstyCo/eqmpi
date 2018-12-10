@@ -46,7 +46,7 @@ struct CommandLineArgs
         // default
         K = 20;
         N = -1;
-        deviation = false;
+        deviation = true;
     }
 
     void parse(int argc_, char **argv_);

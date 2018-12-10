@@ -62,14 +62,19 @@ bgpall:
 	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
 	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_FLOAT)
 	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
+bgpallomp:
+	mpisubmit.bg -n 128 -m SMP -w 00:15:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
+	mpisubmit.bg -n 256 -m SMP -w 00:10:00 -e "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT)
+	mpisubmit.bg -n 512 -m SMP -w 00:5:00 -e  "OMP_NUM_THREADS=4" $(EXECUTABLE_OMP_FLOAT) 
 	
 bgpsep:
-	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=128
+	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=128make
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=256
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_FLOAT) N=512
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=128
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=256
 	mpisubmit.bg -n 1 -m SMP -w 00:15:00 $(EXECUTABLE_OMP_FLOAT) N=512
+
 	
 bgp512:
 	mpisubmit.bg -n 1 -m SMP -w 00:30:00 $(EXECUTABLE_FLOAT) N=512
