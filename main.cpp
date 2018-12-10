@@ -13,16 +13,9 @@ int main(int argc, char **argv)
     if (clargs.N > 0)
         Ns.push_back(clargs.N);
     if (Ns.empty()) {
-#ifdef BGP
         Ns.push_back(128);
         Ns.push_back(256);
         Ns.push_back(512);
-#endif
-#ifdef POLUS
-        Ns.push_back(128);
-        Ns.push_back(256);
-        Ns.push_back(512);
-#endif
     }
 
     for (uint i = 0; i < Ns.size(); ++i) {
@@ -37,23 +30,12 @@ int main(int argc, char **argv)
         profiler.finish();
         if (cnode.mpi.rank == 0) {
             int nthread = 1;
-            std::string sc("U");
-#ifdef BGP
-            sc = "BGP";
-#endif
-#ifdef POLUS
-            sc = "POLUS";
-#endif
-#ifdef WITH_OMP
-            nthread = 3;
-#endif
-            std::cout << SSTR("###," << sc
+            std::cout << SSTR("###," << cnode.scTag()
                               << ',' << cnode.mpi.procCount
                               << ',' << nthread
                               << ',' << N
                               << ',' << profiler.time() ) << std::endl;
         }
-//        cnode.print(SSTR("SIZE " << N << " TIME " << prf.time()));
     }
 
     // Finalize the MPI environment.

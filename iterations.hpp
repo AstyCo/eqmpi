@@ -93,7 +93,7 @@ struct Iterations
 
     RealVector analyticalSolution;
 
-    IndiceVector edgeIndeces;
+    uint edgeI, edgeIL, edgeJ, edgeJL, edgeK, edgeKL;
 
 //    std::vector<ConnectionDirection> no_neighbour_edges;
     Requests recv_requests;
@@ -133,7 +133,6 @@ struct Iterations
     void prepareEdgeIndices();
 
     long get_index(uint i, uint j, uint k) const;
-    long get_exact_index(uint i, uint j, uint k) const;
 
     real x(uint i) const { return (i0 + i) * hx;}
     real y(uint j) const { return (j0 + j) * hy;}

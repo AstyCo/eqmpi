@@ -34,16 +34,7 @@ std::string ComputeNode::scTag() const
 
 void ComputeNode::init()
 {
-#ifdef WITH_OMP
-    omp_set_num_threads(3); // set the number of threads for this programm (BlueGene/P)
-#endif
-
-#ifdef BGP
     sc = SCBluegeneP;
-#endif
-#ifdef POLUS
-    sc = SCPolus;
-#endif
 
 	// Get the number of processes`
     int world_size;

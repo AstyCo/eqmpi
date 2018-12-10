@@ -2,10 +2,6 @@
 #define GLOBALS_HPP
 
 #include <mpi.h> // global include mpi just becouse we can
-#ifdef WITH_OMP
-#include <omp.h>
-#endif
-
 
 #include <map>
 

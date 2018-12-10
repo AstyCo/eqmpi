@@ -26,9 +26,7 @@ Iterations::Iterations(uint N_)
 void Iterations::prepare()
 {
 	step0();
-//    printDeviationsPrivate(arrayPP, 0);
     step1();
-//    printDeviationsPrivate(arrayP, 1);
 }
 
 
@@ -40,9 +38,6 @@ void Iterations::run()
         async_recv_all();
         async_send_all();
 
-#ifdef WITH_OMP
-#       pragma omp parallel for // parallel slices
-#endif
         for (int i = 1; i < ic - 1; ++i) {
             for (uint j = 1; j < jc - 1; ++j) {
                 for (uint k = 1; k < kc - 1; ++k) {
@@ -55,22 +50,13 @@ void Iterations::run()
             int request_index;
             MPI_Status status;
 
-            for(;;) {
-                MPI_Waitany(recv_requests.v.size(),
-                            recv_requests.v.data(),
-                            &request_index,
-                            &status);
-                if (request_index == MPI_UNDEFINED) {
-                    break;
-                }
-                CHECK_INDEX(request_index, 0, recv_requests.iv.size());
-                const Iterations::Requests::Info &info
-                        = recv_requests.iv[request_index];
-                copy_data(recv_requests, request_index, MPI_OP_RECV);
-                calculate(info.dir);
-            }
+            MPI_Waitall(recv_requests.v.size(),
+                        recv_requests.v.data(),
+                        &status);
+            for (uint i = 0; i < recv_requests.size(); ++i)
+                copy_data(recv_requests, i, MPI_OP_RECV);
+            calculate_edge_values();
         }
-        calculate_edge_values();
 
         if (clargs.deviation) {
             prepareSolution(next_step);
@@ -116,9 +102,6 @@ void Iterations::async_recv_all()
 
 void Iterations::prepareSolution(uint n)
 {
-#ifdef WITH_OMP
-#   pragma omp parallel for
-#endif
    for (int i = 0; i < ic; ++i) {
        for (uint j = 0; j < jc; ++j) {
            for (uint k = 0; k < kc; ++k) {
@@ -150,9 +133,6 @@ void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint 
     real avgDeviation = 0;
     real corr = 0, appr = 0;
 
-#ifdef WITH_OMP
-#   pragma omp parallel for
-#endif
     for (int i = 0; i < ic; ++i) {
         for (uint j = 0; j < jc; ++j) {
             for (uint k = 0; k < kc; ++k) {
@@ -336,70 +316,17 @@ void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
     }
 }
 
-void Iterations::calculate(ConnectionDirection cdir)
-{
-    switch (cdir) {
-    case DIR_X:
-    case DIR_MINUS_X:
-    {
-        uint i = sendEdgeId(cdir);
-        for (uint j = 1; j < jc - 1; ++j) {
-            for (uint k = 1; k < kc - 1; ++k)
-                calculate(i, j, k);
-        }
-        break;
-    }
-    case DIR_Y:
-    case DIR_MINUS_Y:
-    {
-        uint j = sendEdgeId(cdir);
-        for (uint i = 1; i < ic - 1; ++i) {
-            for (uint k = 1; k < kc - 1; ++k)
-                calculate(i, j, k);
-        }
-        break;
-    }
-    case DIR_Z:
-    case DIR_MINUS_Z:
-    {
-        uint k = sendEdgeId(cdir);
-        for (uint i = 1; i < ic - 1; ++i) {
-            for (uint j = 1; j < jc - 1; ++j)
-                calculate(i, j, k);
-        }
-        break;
-    }
-    case DIR_Y_PERIOD_FIRST:
-    {
-        uint j = recvEdgeId(cdir);
-        for (uint i = 1; i < ic - 1; ++i) {
-            for (uint k = 1; k < kc - 1; ++k)
-                calculate(i, j, k);
-        }
-        break;
-    }
-    case DIR_Y_PERIOD_LAST:
-        // just copy
-        break;
-    default: MY_ASSERT(false);
-    }
-}
-
 void Iterations::calculate_edge_values()
 {
-    for (long i = 0; i < edgeIndeces.size(); ++i) {
-        const Indice &ind = edgeIndeces[i];
-        calculate(ind.i, ind.j, ind.k);
+    for (uint i = 0; i <= DIR_MINUS_Z; ++i) {
+        ConnectionDirection cdir = static_cast<ConnectionDirection>(i);
+        calculate(cdir);
     }
 }
 
 void Iterations::calculate(uint i, uint j, uint k)
 {
     long index = get_index(i, j, k);
-
-//    array[index]++;
-//    cnode.print(SSTR("calculate " << i << ',' << j << ',' << k));
-//    return;
 
     CHECK_INDEX(index, 0, array.size());
     CHECK_INDEX(index, 0, array.size());
@@ -424,12 +351,57 @@ void Iterations::calculate(uint i, uint j, uint k)
             + arrayP[get_index(i,j,k+1)]) / hz / hz
             );
 }
+void Iterations::calculate(ConnectionDirection cdir)
+{
+    switch (cdir) {
+    case DIR_X:
+    case DIR_MINUS_X:
+    {
+        uint i = sendEdgeId(cdir);
+        for (uint j = edgeJ; j < edgeJL; ++j) {
+            for (uint k = edgeK; k < edgeKL; ++k)
+                calculate(i, j, k);
+        }
+        break;
+    }
+    case DIR_Y:
+    case DIR_MINUS_Y:
+    {
+        uint j = sendEdgeId(cdir);
+        for (uint i = edgeI; i < edgeIL; ++i) {
+            for (uint k = edgeK; k < edgeKL; ++k)
+                calculate(i, j, k);
+        }
+        break;
+    }
+    case DIR_Z:
+    case DIR_MINUS_Z:
+    {
+        uint k = sendEdgeId(cdir);
+        for (uint i = edgeI; i < edgeIL; ++i) {
+            for (uint j = edgeJ; j < edgeJL; ++j)
+                calculate(i, j, k);
+        }
+        break;
+    }
+    case DIR_Y_PERIOD_FIRST:
+    {
+        uint j = recvEdgeId(cdir);
+        for (uint i = edgeI; i < edgeIL; ++i) {
+            for (uint k = edgeK; k < edgeKL; ++k)
+                calculate(i, j, k);
+        }
+        break;
+    }
+    case DIR_Y_PERIOD_LAST:
+        // just copy
+        break;
+    default: MY_ASSERT(false);
+    }
+}
 
 void Iterations::it_for_each(IndexesMFuncPtr func)
 {
-#ifdef WITH_OMP
-#   pragma omp parallel for
-#endif
    for (int i = 0; i < ic; ++i) {
        for (int j = 0; j < jc; ++j) {
            for (int k = 0; k < kc; ++k) {
@@ -448,126 +420,41 @@ void Iterations::shift_arrays()
     memcpy(arrayP.data(), array.data(), byteSize);
 }
 
-
 void Iterations::prepareEdgeIndices()
 {
-    std::vector<int> tmp;
-    tmp.resize(ic * jc * kc);
-    for (long i = 0; i < tmp.size(); ++i)
-        tmp[i] = 0;
-
-    for (uint i = 0; i < ic; ++i) {
-        tmp[get_exact_index(i, 0, 0)] = 1;
-        tmp[get_exact_index(i, 0, kc - 1)] = 1;
-        tmp[get_exact_index(i, jc - 1, 0)] = 1;
-        tmp[get_exact_index(i, jc - 1, kc - 1)] = 1;
-    }
-    for (uint j = 0; j < jc; ++j) {
-        tmp[get_exact_index(0, j, 0)] = 1;
-        tmp[get_exact_index(0, j, kc - 1)] = 1;
-        tmp[get_exact_index(ic - 1, j, 0)] = 1;
-        tmp[get_exact_index(ic - 1, j, kc - 1)] = 1;
-    }
-    for (uint k = 0; k < kc; ++k) {
-        tmp[get_exact_index(0, 0, k)] = 1;
-        tmp[get_exact_index(0, jc - 1, k)] = 1;
-        tmp[get_exact_index(ic - 1, 0, k)] = 1;
-        tmp[get_exact_index(ic - 1, jc - 1, k)] = 1;
-    }
-
-    for (uint i = 0; i < DIR_Y_PERIOD_FIRST; ++i) {
+    edgeI = edgeJ = edgeK = 0;
+    edgeIL = ic;
+    edgeJL = jc;
+    edgeKL = kc;
+    for (uint i = 0; i <= DIR_MINUS_Z; ++i) {
         ConnectionDirection cdir = static_cast<ConnectionDirection>(i);
         if (cnode.hasNeighbor(cdir))
             continue;
         switch (cdir) {
         case DIR_X:
-            for (uint j = 0; j < jc; ++j) {
-                tmp[get_exact_index(ic - 1, j, 0)] = 0;
-                tmp[get_exact_index(ic - 1, j, kc - 1)] = 0;
-            }
-            for (uint k = 0; k < kc; ++k) {
-                tmp[get_exact_index(ic - 1, 0, k)] = 0;
-                tmp[get_exact_index(ic - 1, jc - 1, k)] = 0;
-            }
+            --edgeIL;
             break;
         case DIR_MINUS_X:
-            for (uint j = 0; j < jc; ++j) {
-                tmp[get_exact_index(0, j, 0)] = 0;
-                tmp[get_exact_index(0, j, kc - 1)] = 0;
-            }
-            for (uint k = 0; k < kc; ++k) {
-                tmp[get_exact_index(0, 0, k)] = 0;
-                tmp[get_exact_index(0, jc - 1, k)] = 0;
-            }
-            break;
-        case DIR_Y:
-            if (cnode.hasNeighbor(DIR_Y_PERIOD_FIRST))
-                continue;
-            for (uint i = 0; i < ic; ++i) {
-                tmp[get_exact_index(i, jc - 1, 0)] = 0;
-                tmp[get_exact_index(i, jc - 1, kc - 1)] = 0;
-            }
-            for (uint k = 0; k < kc; ++k) {
-                tmp[get_exact_index(0, jc - 1, k)] = 0;
-                tmp[get_exact_index(ic - 1, jc - 1, k)] = 0;
-            }
+            ++edgeI;
             break;
         case DIR_MINUS_Y:
-            for (uint i = 0; i < ic; ++i) {
-                tmp[get_exact_index(i, 0, 0)] = 0;
-                tmp[get_exact_index(i, 0, kc - 1)] = 0;
-            }
-            for (uint k = 0; k < kc; ++k) {
-                tmp[get_exact_index(0, 0, k)] = 0;
-                tmp[get_exact_index(ic - 1, 0, k)] = 0;
-            }
+            ++edgeJ;
             break;
         case DIR_Z:
-            for (uint i = 0; i < ic; ++i) {
-                tmp[get_exact_index(i, 0, kc - 1)] = 0;
-                tmp[get_exact_index(i, jc - 1, kc - 1)] = 0;
-            }
-            for (uint j = 0; j < jc; ++j) {
-                tmp[get_exact_index(0, j, kc - 1)] = 0;
-                tmp[get_exact_index(ic - 1, j, kc - 1)] = 0;
-            }
+            --edgeKL;
             break;
         case DIR_MINUS_Z:
-            for (uint i = 0; i < ic; ++i) {
-                tmp[get_exact_index(i, 0, 0)] = 0;
-                tmp[get_exact_index(i, jc - 1, 0)] = 0;
-            }
-            for (uint j = 0; j < jc; ++j) {
-                tmp[get_exact_index(0, j, 0)] = 0;
-                tmp[get_exact_index(ic - 1, j, 0)] = 0;
-            }
+            ++edgeK;
             break;
         default:
-            MY_ASSERT(false);
-            break;
+            return;
         }
-    }
-
-    for (long i = 0; i < tmp.size(); ++i) {
-        if (!tmp[i])
-            continue;
-        long vz = i % kc;
-        long vxy = i / kc;
-        long vy = vxy % jc;
-        long vx = vxy / jc;
-
-        edgeIndeces.push_back(Indice(vx, vy, vz));
     }
 }
 
 long Iterations::get_index(uint i, uint j, uint k) const
 {
     return (long(i + 1) * (jc + 2) + (j + 1)) * (kc + 2) + (k + 1);
-}
-
-long Iterations::get_exact_index(uint i, uint j, uint k) const
-{
-    return (long(i)*jc + j) * kc + k;
 }
 
 void Iterations::set_0th(uint i, uint j, uint k)
