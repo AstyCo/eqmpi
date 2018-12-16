@@ -1,14 +1,15 @@
 #include "iterations.hpp"
-#define CUDA
+
 #ifdef CUDA
 #include "cuda_runtime.h"
+
 #endif
 
-#ifdef CUDA
+#ifdef SC_INFO
+#include <cstdio>
+#include <unistd.h> // sysconf
 int main(int argc, char **argv)
 {
-    char fname[512];
-
     int num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
     int dev_count;
     cudaGetDeviceCount(&dev_count);
@@ -81,10 +82,7 @@ int main(int argc, char **argv)
         profiler.start();
         Iterations its(N); // iterations parameters, send/recv buffers
         its.prepare();
-        if (cnode.mpi.procCount == 1)
-            its.seqRun();
-        else
-            its.run();
+        its.run();
 
         MPI_Barrier(MPI_COMM_WORLD);
         profiler.finish();

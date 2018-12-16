@@ -2,6 +2,7 @@
 #define ITERATIONS_HPP
 
 #include "utils.hpp"
+#include "cuda.hpp"
 
 #include <vector>
 
@@ -39,23 +40,6 @@ struct Iterations
         }
     };
 
-    struct Indice
-    {
-        int i, j, k;
-
-        Indice(int x_, int y_, int z_)
-            : i(x_), j(y_), k(z_)
-        {}
-
-        bool operator==(const Indice &ind) const
-        {
-            return i == ind.i && j == ind.j && k == ind.k;
-        }
-    };
-
-
-    typedef std::vector<Indice> IndiceVector;
-
     long N;
 
     uint i0;
@@ -65,7 +49,9 @@ struct Iterations
     long ic;  // counts
     long jc;  // counts
     long kc;  // counts
+
     long bigsize;
+    long totalEdgeSize;
 
     real hx;
     real hy;
@@ -73,9 +59,15 @@ struct Iterations
 
     real ht; // delta t
 
-    RealVector array;
-    RealVector arrayP;
-    RealVector arrayPP;
+    RealDVector dArray;
+    RealDVector dArrayP;
+    RealDVector dArrayPP;
+
+    RealDVector dEdgeArray;
+    RealVector hEdgeArray;
+
+    LongHVector hEdgeIndices;
+    LongDVector dEdgeIndices;
 
     RealVector sendX;
     RealVector sendXm;
@@ -91,7 +83,7 @@ struct Iterations
     RealVector recvZ;
     RealVector recvZm;
 
-    RealVector analyticalSolution;
+    RealDVector analyticalSolution;
 
     uint edgeI, edgeIL, edgeJ, edgeJL, edgeK, edgeKL;
 
@@ -104,9 +96,10 @@ struct Iterations
     Iterations(uint N_);
 
     void prepare();
+    void prepareEdgeIndiceArray();
+    void prepareEdgeIndices();
 
     void run();
-    void seqRun();
 
     void async_send_all();
     void async_recv_all();
@@ -126,14 +119,6 @@ struct Iterations
     void copy_send(RealVector &v, RealVector &a, int i, int j, int k, uint offset);
 
     void copy_data(Requests &requests, uint id, MPI_OP type);
-    void calculate(uint i, uint j, uint k);
-    void calculate(ConnectionDirection cdir);
-    void calculate_edge_values();
-   	void it_for_each(IndexesMFuncPtr func);
-    void shift_arrays();
-    void copy_seq_periodic();
-
-    void prepareEdgeIndices();
 
     long get_index(uint i, uint j, uint k) const;
 
@@ -142,9 +127,7 @@ struct Iterations
     real z(uint k) const { return (k0 + k) * hz;}
     real time(uint n) const { return n * ht;} // n - iter
 
-    void set_0th(uint i, uint j, uint k);
     void step0();
-    void set_1th(uint i, uint j, uint k);
     void step1();
 
     int edgeId(ConnectionDirection cdir, MPI_OP op_type);

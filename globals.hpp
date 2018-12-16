@@ -37,6 +37,7 @@
 
 typedef unsigned int uint;
 
+
 #ifdef FLOAT_P
 typedef float real;
 #   define MPI_TYPE_REAL MPI_FLOAT
