@@ -4,17 +4,21 @@
 #include <thrust/device_vector.h>
 
 typedef thrust::device_vector<real> RealDVector;
+typedef thrust::host_vector<real> RealHVector;
 
 typedef thrust::host_vector<long> LongHVector;
 typedef thrust::device_vector<long> LongDVector;
 
+void cuda_step_0(RealDVector &darray, RealDVector &dArrayPP);
+void cuda_step_1(RealDVector &dArrayP);
 
-void cuda_step_0();
-void cuda_step_1();
+void cuda_calculate_inner(long bigsize);
 
-void cuda_calculate_inner();
+void cuda_calculate_edges(LongDVector &dEdgeIndices, RealDVector &dEdgeArray);
 
-void cuda_calculate_edges();
+void cuda_shift_arrays(RealDVector &dArray,
+                       RealDVector &dArrayP,
+                       RealDVector &dArrayPP);
 
 void cuda_load_const_mem(int N_,
                          int i0_, int j0_, int k0_,

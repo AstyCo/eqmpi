@@ -64,26 +64,14 @@ struct Iterations
     RealDVector dArrayPP;
 
     RealDVector dEdgeArray;
-    RealVector hEdgeArray;
+    RealHVector hEdgeArray;
 
     LongHVector hEdgeIndices;
     LongDVector dEdgeIndices;
 
-    RealVector sendX;
-    RealVector sendXm;
-    RealVector sendY;
-    RealVector sendYm;
-    RealVector sendZ;
-    RealVector sendZm;
-
-    RealVector recvX;
-    RealVector recvXm;
-    RealVector recvY;
-    RealVector recvYm;
-    RealVector recvZ;
-    RealVector recvZm;
-
     RealDVector analyticalSolution;
+
+    RealVector hArrayBuff;
 
     uint edgeI, edgeIL, edgeJ, edgeJL, edgeK, edgeKL;
 
@@ -101,15 +89,18 @@ struct Iterations
 
     void run();
 
+    void copy_edges_to_h();
+    void copy_edges_to_d();
+
     void async_send_all();
     void async_recv_all();
 
-    void prepareSolution(uint n);
+//    void prepareSolution(uint n);
 
-    real getDeviation(const RealVector &arr, uint i, uint j, uint k, uint n) const;
+//    real getDeviation(const RealVector &arr, uint i, uint j, uint k, uint n) const;
 
-    void printDeviations(uint n);
-    void printDeviationsPrivate(const RealVector &arr, uint n);
+//    void printDeviations(uint n);
+//    void printDeviationsPrivate(const RealVector &arr, uint n);
 
     uint dir_size(ConnectionDirection cdir);
 

@@ -25,7 +25,6 @@
 #define VAL_LZ (double(M_PI))
 #define VAL_T (0.01)
 
-#define DEBUG
 #ifdef DEBUG
 #define MY_ASSERT(x) if (!(x)) Asserter(__FILE__, __LINE__);
 #define MY_ASSERT_X(x, text) if (!(x)) {cnode.error(text); Asserter(__FILE__, __LINE__);}
@@ -48,22 +47,10 @@ typedef double real;
 
 void Asserter(const char *file, int line);
 
-inline real phi(real x, real y, real z)
-{
-    return sin(x) * cos(y - VAL_LY/2) * sin(z);
-}
-
 inline real u(real x, real y, real z, real t)
 {
     static real sqrt3 = sqrt(3.0);
-    return phi(x, y, z) * cos(sqrt3 * t);
-}
-
-// Δ = div grad
-// Δ phi = (d/dx^2 + d/dy^2 + d/dz^2) phi
-inline real div_grad_phi(real x, real y, real z)
-{
-    return -3.0 * phi(x, y, z);
+    return sin(x) * cos(y - VAL_LY/2) * sin(z) * cos(sqrt3 * t);
 }
 
 struct GridDimensions
