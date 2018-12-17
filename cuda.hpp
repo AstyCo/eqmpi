@@ -9,7 +9,16 @@ typedef thrust::host_vector<real> RealHVector;
 typedef thrust::host_vector<long> LongHVector;
 typedef thrust::device_vector<long> LongDVector;
 
-void cuda_resize(RealDVector &dArray, RealDVector &dArrayP, RealDVector &dArrayPP, RealDVector &dEdgeArray, RealHVector &hEdgeArray, RealDVector &analyticalSolution, long totalEdgeSize, long bigsize);
+void cuda_resize(RealDVector &dArray,
+                 RealDVector &dArrayP,
+                 RealDVector &dArrayPP,
+                 RealDVector &dEdgeArray,
+                 RealHVector &hEdgeArray,
+                 RealDVector &dDeviationsArray,
+                 long totalEdgeSize, long bigsize);
+
+real cuda_get_local_avg_deviation(long bigsize, long N, real current_time,
+                                  RealDVector &dDeviationsArray);
 
 void cuda_step_0(RealDVector &darray, RealDVector &dArrayPP);
 void cuda_step_1(RealDVector &dArrayP);
@@ -24,15 +33,11 @@ void cuda_shift_arrays(RealDVector &dArray,
 
 void cuda_load_const_mem(int N_,
                          int i0_, int j0_, int k0_,
-                         long long bigsize_,
                          long ic_, long jc_, long kc_,
-                         int ei_, int ej_, int ek_,
-                         int eic_, int ejc_, int ekc_,
                          real hi_, real hj_, real hk_,
                          real ht_, RealDVector *array_,
                          RealDVector *arrayP_,
-                         RealDVector *arrayPP_,
-                         RealDVector *edgeArray_, LongDVector *edgeIndices_);
+                         RealDVector *arrayPP_);
 
 template <typename THVec, typename TDVec>
 void copy_h_to_d(THVec &hv, TDVec &dv)

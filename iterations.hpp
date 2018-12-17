@@ -69,13 +69,12 @@ struct Iterations
     LongHVector hEdgeIndices;
     LongDVector dEdgeIndices;
 
-    RealDVector analyticalSolution;
+    RealDVector dDeviationsArray;
 
     RealVector hArrayBuff;
 
     uint edgeI, edgeIL, edgeJ, edgeJL, edgeK, edgeKL;
 
-//    std::vector<ConnectionDirection> no_neighbour_edges;
     Requests recv_requests;
     Requests send_requests;
 
@@ -95,12 +94,7 @@ struct Iterations
     void async_send_all();
     void async_recv_all();
 
-//    void prepareSolution(uint n);
-
-//    real getDeviation(const RealVector &arr, uint i, uint j, uint k, uint n) const;
-
-//    void printDeviations(uint n);
-//    void printDeviationsPrivate(const RealVector &arr, uint n);
+    void printDeviations(uint n);
 
     uint dir_size(ConnectionDirection cdir);
 

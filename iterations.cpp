@@ -20,13 +20,21 @@ void Iterations::Requests::append(Iterations::Requests::Info info, uint sz)
 Iterations::Iterations(uint N_)
     : N(N_), next_step(0)
 {
-    fill(cnode);
+    Profiler p;
+    {
+        fill(cnode);
+    }
+    get_time(times.program_initialization, p);
 }
 
 void Iterations::prepare()
 {
-	step0();
-    step1();
+    Profiler p;
+    {
+        step0();
+        step1();
+    }
+    get_time(times.parallel_cycles, p);
 }
 
 void Iterations::prepareEdgeIndiceArray()
@@ -124,12 +132,17 @@ void Iterations::run()
     MY_ASSERT(next_step == 2);
 	// STEPS
     for (; next_step < clargs.K + 1; ++next_step) {
+        Profiler p;
+
         if (next_step > 2) {
             async_recv_all();
             async_send_all();
         }
+        get_time(times.mpi_send_recv, p);
 
         cuda_calculate_inner(bigsize);
+
+        get_time(times.parallel_cycles, p);
 
         // sync recv prev
         MPI_Waitall(recv_requests.v.size(),
@@ -139,16 +152,27 @@ void Iterations::run()
         for (uint i = 0; i < recv_requests.size(); ++i)
             copy_data(recv_requests, i, MPI_OP_RECV);
 
+        get_time(times.mpi_send_recv, p);
+
         copy_edges_to_d();
+
+        get_time(times.host_device_exchange, p);
+
         cuda_calculate_edges(dEdgeIndices, dEdgeArray);
+
+        get_time(times.parallel_cycles, p);
+
         copy_edges_to_h();
 
-//        if (clargs.deviation) {
-//            prepareSolution(next_step);
-//            printDeviations(next_step);
-//        }
+        get_time(times.host_device_exchange, p);
+
+        if (clargs.deviation)
+            printDeviations(next_step);
+
         if (next_step < clargs.K) {
+            p.start();
             cuda_shift_arrays(dArray, dArrayP, dArrayPP);
+            get_time(times.shift_arrays, p);
         }
     } // ENDS STEPS
 }
@@ -202,68 +226,27 @@ void Iterations::async_recv_all()
     }
 }
 
-//void Iterations::prepareSolution(uint n)
-//{
-//   for (int i = 0; i < ic; ++i) {
-//       for (uint j = 0; j < jc; ++j) {
-//           for (uint k = 0; k < kc; ++k) {
-//               long id = get_index(i, j, k);
-//               analyticalSolution[id] = u(x(i), y(j), z(k), time(n));
-//           }
-//       }
-//   }
-//}
+void Iterations::printDeviations(uint n)
+{
+    real avgDeviation = cuda_get_local_avg_deviation(bigsize,
+                                                     N,
+                                                     time(n),
+                                                     dDeviationsArray);
+    real globalDeviation = 0;
+    MPI_Reduce(&avgDeviation, &globalDeviation, 1, MPI_TYPE_REAL,
+               MPI_SUM, 0, MPI_COMM_WORLD);
 
-//real Iterations::getDeviation(const Iterations::RealVector &arr, uint i, uint j, uint k, uint n) const
-//{
-//    long long id = get_index(i, j, k);
-//    real correctAnswer = analyticalSolution[id];
-//    real approxAnswer = arr[id];
+    globalDeviation /= cnode.mpi.procCount;
 
-//    return ABS(correctAnswer - approxAnswer);
-//}
+    if (cnode.mpi.rank == 0) {
+        std::cout << SSTR("%%%," << cnode.scTag()
+                         << ',' << cnode.mpi.procCount
+                         << ',' << N
+                         << ',' << next_step
+                         << ',' << globalDeviation) << std::endl;
+    }
 
-//void Iterations::printDeviations(uint n)
-//{
-//    printDeviationsPrivate(dArray, n);
-//}
-
-//void Iterations::printDeviationsPrivate(const Iterations::RealVector &arr, uint n)
-//{
-//    prepareSolution(n);
-
-//    real avgDeviation = 0;
-//    real corr = 0, appr = 0;
-
-//    for (int i = 0; i < ic; ++i) {
-//        for (uint j = 0; j < jc; ++j) {
-//            for (uint k = 0; k < kc; ++k) {
-//                long long id = get_index(i, j, k);
-//                real correctAnswer = analyticalSolution[id];
-//                real approxAnswer = arr[id];
-
-//                corr += correctAnswer;
-//                appr += approxAnswer;
-
-//                avgDeviation += getDeviation(arr, i, j, k, n);
-//            }
-//        }
-//    }
-//    real globalDeviation=0;
-//    MPI_Reduce(&avgDeviation, &globalDeviation, 1, MPI_TYPE_REAL,
-//               MPI_SUM, 0, MPI_COMM_WORLD);
-//    globalDeviation /= N*N*N;
-
-//    if (cnode.mpi.rank == 0) {
-//        std::cout << SSTR("%%%," << cnode.scTag()
-//                         << ',' << cnode.mpi.procCount
-//                         << ',' << N
-//                         << ',' << next_step
-//                         << ',' << globalDeviation) << std::endl;
-//    }
-
-//}
-
+}
 
 uint Iterations::dir_size(ConnectionDirection cdir)
 {
@@ -326,7 +309,8 @@ void Iterations::fill(const ComputeNode &n)
     try {
         hArrayBuff.resize(bigsize);
         cuda_resize(dArray, dArrayP, dArrayPP,
-                    dEdgeArray, hEdgeArray, analyticalSolution,
+                    dEdgeArray, hEdgeArray,
+                    dDeviationsArray,
                     totalEdgeSize, bigsize);
 
         for (int i = 0; i < DIR_SIZE; ++i) {
@@ -346,14 +330,10 @@ void Iterations::fill(const ComputeNode &n)
 
     cuda_load_const_mem(N,
                         i0, j0, k0,
-                        bigsize,
                         ic, jc, kc,
-                        edgeI, edgeJ, edgeK,
-                        edgeIL, edgeJL, edgeKL,
                         hx, hy, hz,
                         ht,
-                        &dArray, &dArrayP, &dArrayPP,
-                        &dEdgeArray, &dEdgeIndices);
+                        &dArray, &dArrayP, &dArrayPP);
 }
 
 void Iterations::copy_recv(RealVector &v, RealVector &a,

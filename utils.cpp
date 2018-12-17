@@ -8,7 +8,7 @@
 #include <ctime>
 #include <cstring>
 
-Profiler profiler;
+DetailedTimes times;
 CommandLineArgs clargs;
 ComputeNode cnode;
 
@@ -195,6 +195,8 @@ private:
 Profiler::Profiler(Profiler::Options opts)
     : _impl(new ProfilerPrivate(opts))
 {
+    if (opts & StartOnConstructor)
+        start();
 }
 
 Profiler::~Profiler()
@@ -217,8 +219,9 @@ void Profiler::finish()
     _impl->finish();
 }
 
-double Profiler::time() const
+double Profiler::time()
 {
+    step();
     return _impl->time();
 }
 
@@ -262,3 +265,46 @@ void CommandLineArgs::parseArg(char arg[])
     cnode.print(std::string("unrecognized argument ") + sarg);
 }
 
+DetailedTimes::DetailedTimes()
+{
+    clear();
+}
+
+void DetailedTimes::clear()
+{
+    program_initialization = 0;
+    program_finalization = 0;
+    parallel_cycles = 0;
+    host_device_exchange = 0;
+    mpi_send_recv = 0;
+    shift_arrays = 0;
+}
+
+std::string DetailedTimes::get_times()
+{
+    return SSTR("^^^"
+                << ',' << cnode.mpi.procCount
+                << ',' << clargs.N
+                << ',' << host_device_exchange
+                << ',' << mpi_send_recv
+                << ',' << parallel_cycles
+                << ',' << program_initialization
+                << ',' << program_finalization
+                << ',' << shift_arrays);
+}
+
+void get_time(double &dest, double &local)
+{
+    double global = 0;
+    MPI_Reduce(&local, &global, 1, MPI_DOUBLE,
+               MPI_MAX, 0, MPI_COMM_WORLD);
+    dest += global;
+}
+
+void get_time(double &dest, Profiler &p)
+{
+    double time = p.time();
+    get_time(dest, time);
+
+    p.start();
+}

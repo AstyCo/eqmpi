@@ -37,7 +37,7 @@
 typedef unsigned int uint;
 
 
-#ifdef FLOAT_P
+#ifndef DOUBLE_P
 typedef float real;
 #   define MPI_TYPE_REAL MPI_FLOAT
 #else
@@ -46,12 +46,6 @@ typedef double real;
 #endif
 
 void Asserter(const char *file, int line);
-
-inline real u(real x, real y, real z, real t)
-{
-    static real sqrt3 = sqrt(3.0);
-    return sin(x) * cos(y - VAL_LY/2) * sin(z) * cos(sqrt3 * t);
-}
 
 struct GridDimensions
 {

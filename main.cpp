@@ -76,16 +76,18 @@ int main(int argc, char **argv)
         Ns.push_back(512);
     }
 
+    Profiler p_finalization;
     for (uint i = 0; i < Ns.size(); ++i) {
+        get_time(times.program_finalization, p_finalization);
         int N = Ns[i];
 
-        profiler.start();
+        Profiler profiler;
         Iterations its(N); // iterations parameters, send/recv buffers
+
         its.prepare();
         its.run();
 
         MPI_Barrier(MPI_COMM_WORLD);
-        profiler.finish();
         if (cnode.mpi.rank == 0) {
             int nthread = 1;
             std::cout << SSTR("###," << cnode.scTag()
@@ -94,7 +96,11 @@ int main(int argc, char **argv)
                               << ',' << N
                               << ',' << profiler.time() ) << std::endl;
         }
+        p_finalization.start();
     }
+    get_time(times.program_finalization, p_finalization);
+
+    cnode.print0(times.get_times());
 
     // Finalize the MPI environment.
     MPI_Finalize();
