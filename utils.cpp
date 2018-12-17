@@ -299,6 +299,7 @@ DetailedTimes::DetailedTimes()
 void DetailedTimes::clear()
 {
     program_initialization = 0;
+    allocations = 0;
     program_finalization = 0;
     parallel_cycles = 0;
     host_device_exchange = 0;
@@ -315,6 +316,7 @@ std::string DetailedTimes::get_times()
                 << ',' << mpi_send_recv
                 << ',' << parallel_cycles
                 << ',' << program_initialization
+                << ',' << allocations
                 << ',' << program_finalization
                 << ',' << shift_arrays);
 }

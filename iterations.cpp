@@ -21,9 +21,7 @@ Iterations::Iterations(uint N_)
     : N(N_), next_step(0)
 {
     Profiler p;
-    {
-        fill(cnode);
-    }
+    fill(cnode);
     get_time(times.program_initialization, p);
 }
 
@@ -309,10 +307,12 @@ void Iterations::fill(const ComputeNode &n)
     try {
         hArrayBuff.resize(bigsize);
         MPI_Barrier(MPI_COMM_WORLD);
+        Profiler p_allocations;
         cuda_resize(dArray, dArrayP, dArrayPP,
                     dEdgeArray, hEdgeArray,
                     dDeviationsArray,
                     totalEdgeSize, bigsize);
+        get_time(times.allocations, p_allocations);
 
         for (int i = 0; i < DIR_SIZE; ++i) {
             ConnectionDirection cdir = toCD(i);
@@ -329,12 +329,14 @@ void Iterations::fill(const ComputeNode &n)
         MY_ASSERT(false);
     }
 
+    Profiler p_allocations;
     cuda_load_const_mem(N,
                         i0, j0, k0,
                         ic, jc, kc,
                         hx, hy, hz,
                         ht,
                         &dArray, &dArrayP, &dArrayPP);
+    get_time(times.allocations, p_allocations);
 }
 
 void Iterations::copy_recv(RealVector &v, RealVector &a,

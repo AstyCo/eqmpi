@@ -44,7 +44,7 @@ struct CommandLineArgs
     {
         // default
         K = 20;
-        N = 1024;
+        N = 512;
         deviation = true;
     }
 
@@ -93,9 +93,12 @@ private:
     std::string titledStr(const std::string &str) const;
 };
 
+extern ComputeNode cnode;
+
 struct DetailedTimes
 {
     double program_initialization;
+    double allocations;
     double program_finalization;
     double parallel_cycles;
     double host_device_exchange;
@@ -112,7 +115,6 @@ void get_time(double &dest, double &local);
 void get_time(double &dest, Profiler &p);
 
 extern DetailedTimes times;
-extern ComputeNode cnode;
 
 
 #endif // UTILS_HPP

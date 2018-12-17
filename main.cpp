@@ -75,30 +75,31 @@ int main(int argc, char **argv)
         Ns.push_back(512);
     }
 
-    Profiler p_finalization;
     for (uint i = 0; i < Ns.size(); ++i) {
-        get_time(times.program_finalization, p_finalization);
-        int N = Ns[i];
+        Profiler p_finalization;
+        {
+            int N = Ns[i];
 
-        Profiler profiler;
-        Iterations its(N); // iterations parameters, send/recv buffers
-        MPI_Barrier(MPI_COMM_WORLD);
+            Profiler profiler;
+            Iterations its(N); // iterations parameters, send/recv buffers
+            MPI_Barrier(MPI_COMM_WORLD);
 
-        its.prepare();
-        its.run();
+            its.prepare();
+            its.run();
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        if (cnode.mpi.rank == 0) {
-            int nthread = 1;
-            std::cout << SSTR("###," << cnode.scTag()
-                              << ',' << cnode.mpi.procCount
-                              << ',' << nthread
-                              << ',' << N
-                              << ',' << profiler.time() ) << std::endl;
+            MPI_Barrier(MPI_COMM_WORLD);
+            if (cnode.mpi.rank == 0) {
+                int nthread = 1;
+                std::cout << SSTR("###," << cnode.scTag()
+                                  << ',' << cnode.mpi.procCount
+                                  << ',' << nthread
+                                  << ',' << N
+                                  << ',' << profiler.time() ) << std::endl;
+            }
+            p_finalization.start();
         }
-        p_finalization.start();
+        get_time(times.program_finalization, p_finalization);
     }
-    get_time(times.program_finalization, p_finalization);
 
     cnode.print0(times.get_times());
 

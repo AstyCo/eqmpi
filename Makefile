@@ -9,7 +9,7 @@ EXECUTABLE_CUDA=t3
 EXECUTABLE_FLOAT_SEQ=t2_seq
 
 cuda: 
-	nvcc -rdc=true -arch=sm_60 -ccbin mpixlC -Xcompiler -O0,-qarch=pwr8,-qstrict,-Wall,-DCUDA cuda.cu $(SOURCES) -o $(EXECUTABLE_CUDA)
+	nvcc -rdc=true -arch=sm_60 -ccbin mpixlC -Xcompiler -O3,-qarch=pwr8,-qstrict,-Wall,-DCUDA cuda.cu $(SOURCES) -o $(EXECUTABLE_CUDA)
 	
 gpu_info:
 	nvcc -rdc=true -arch=sm_60 -ccbin mpixlC -Xcompiler -O0,-qarch=pwr8,-qstrict,-Wall,-DSC_INFO cuda.cu $(SOURCES) -o $(EXECUTABLE_CUDA)

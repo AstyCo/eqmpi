@@ -114,17 +114,23 @@ void cuda_resize(RealDVector &dArray,
     std::cout << "\tmax real_d_vector_size: " << dArray.max_size() << std::endl;
     std::cout << "\tmax real_h_vector_size: " << hEdgeArray.max_size() << std::endl;
 
-    dArray.resize(bigsize);
-    dArrayP.resize(bigsize);
-    dArrayPP.resize(bigsize);
+    try {
+        dArray.resize(bigsize);
+        dArrayP.resize(bigsize);
+        dArrayPP.resize(bigsize);
 
-    dEdgeArray.resize(totalEdgeSize);
+        dEdgeArray.resize(totalEdgeSize);
 
-    hEdgeArray.resize(totalEdgeSize);
+        hEdgeArray.resize(totalEdgeSize);
 
 
-    if (clargs.deviation)
-        dDeviationsArray.resize(bigsize);
+        if (clargs.deviation)
+            dDeviationsArray.resize(bigsize);
+    }
+    catch(...) {
+        std::cerr << "CAUGHT AN EXCEPTION" << std::endl;
+        MY_ASSERT(false);
+    }
 
     std::cout << "allocation success" << std::endl;
 }
@@ -140,7 +146,7 @@ struct FDeviation
     {}
 
     __device__
-    real operator()(int offset) {
+    real operator()(long offset) {
         Index id(offset);
         if (id.i == 0 || id.j == 0 || id.k == 0
                 || id.i == i_count + 1
