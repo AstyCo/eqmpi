@@ -125,8 +125,6 @@ struct Iterations
     int sendEdgeId(ConnectionDirection cdir) const;
     int recvEdgeId(ConnectionDirection cdir) const;
     int sendrecvEdgeId(ConnectionDirection cdir) const;
-
-    void printArrayDebug();
 };
 
 #endif // ITERATIONS_HPP

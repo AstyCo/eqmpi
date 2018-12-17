@@ -1,4 +1,5 @@
 #include "cuda.hpp"
+#include "utils.hpp"
 
 #include <thrust/iterator/counting_iterator.h>
 
@@ -111,6 +112,8 @@ void calculate(long offset)
 }
 
 
+
+
 struct FStep0
 {
     __device__
@@ -119,6 +122,26 @@ struct FStep0
         return phi(x_val(id.i), y_val(id.j), z_val(id.k));
     }
 };
+
+void cuda_resize(RealDVector &dArray,
+                 RealDVector &dArrayP,
+                 RealDVector &dArrayPP,
+                 RealDVector &dEdgeArray,
+                 RealHVector &hEdgeArray,
+                 RealDVector &analyticalSolution,
+                 long totalEdgeSize,
+                 long bigsize)
+{
+    dArray.resize(bigsize);
+    dArrayP.resize(bigsize);
+    dArrayPP.resize(bigsize);
+
+    dEdgeArray.resize(totalEdgeSize);
+    hEdgeArray.resize(totalEdgeSize);
+
+    if (clargs.deviation)
+        analyticalSolution.resize(bigsize);
+}
 
 void cuda_step_0(RealDVector &dArray, RealDVector &dArrayPP)
 {

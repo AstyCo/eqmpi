@@ -324,17 +324,10 @@ void Iterations::fill(const ComputeNode &n)
 
     // optimization (allocations may throw std::bad_alloc if no enough memory)
     try {
-        dArray.resize(bigsize);
-        dArrayP.resize(bigsize);
-        dArrayPP.resize(bigsize);
-
-        dEdgeArray.resize(totalEdgeSize);
-        hEdgeArray.resize(totalEdgeSize);
-
         hArrayBuff.resize(bigsize);
-
-        if (clargs.deviation)
-            analyticalSolution.resize(bigsize);
+        cuda_resize(dArray, dArrayP, dArrayPP,
+                    dEdgeArray, hEdgeArray, analyticalSolution,
+                    totalEdgeSize, bigsize);
 
         for (int i = 0; i < DIR_SIZE; ++i) {
             ConnectionDirection cdir = toCD(i);
@@ -501,20 +494,5 @@ int Iterations::sendrecvEdgeId(ConnectionDirection cdir) const
     case DIR_Z: return kc - 1;
     case DIR_MINUS_Z: return 0;
     default: MY_ASSERT(false); return 0;
-    }
-}
-
-void Iterations::printArrayDebug()
-{
-    if (cnode.mpi.rank != cnode.mpi.procCount - 1)
-        return;
-    cnode.print(SSTR("STEP " << next_step));
-    for (uint i = ic - 4; i < ic; ++i) {
-        for (uint j = jc - 4; j < jc; ++j) {
-            for (uint k = kc - 4; k < kc; ++k) {
-                cnode.print(SSTR('(' << i << ',' << j << ',' << k << ')'
-                                 << ' ' << dArray[get_index(i,j,k)]));
-            }
-        }
     }
 }

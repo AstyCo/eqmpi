@@ -9,6 +9,8 @@ typedef thrust::host_vector<real> RealHVector;
 typedef thrust::host_vector<long> LongHVector;
 typedef thrust::device_vector<long> LongDVector;
 
+void cuda_resize(RealDVector &dArray, RealDVector &dArrayP, RealDVector &dArrayPP, RealDVector &dEdgeArray, RealHVector &hEdgeArray, RealDVector &analyticalSolution, long totalEdgeSize, long bigsize);
+
 void cuda_step_0(RealDVector &darray, RealDVector &dArrayPP);
 void cuda_step_1(RealDVector &dArrayP);
 
