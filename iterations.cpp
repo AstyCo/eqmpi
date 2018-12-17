@@ -20,7 +20,9 @@ void Iterations::Requests::append(Iterations::Requests::Info info, uint sz)
 Iterations::Iterations(uint N_)
     : N(N_), next_step(0)
 {
+    Profiler p;
     fill(cnode);
+    get_time(times.program_initialization, p);
 }
 
 void Iterations::prepare()
@@ -73,6 +75,7 @@ void Iterations::seqRun()
     // STEPS
     for (; next_step < clargs.K + 1; ++next_step) {
         copy_seq_periodic();
+        Profiler p;
         for (int i = 1; i < ic - 1; ++i) {
             for (uint j = 1; j < jc; ++j) {
                 for (uint k = 1; k < kc - 1; ++k) {
@@ -80,12 +83,16 @@ void Iterations::seqRun()
                 }
             }
         }
+        get_time(times.parallel_cycles, p);
         if (clargs.deviation) {
             prepareSolution(next_step);
             printDeviations(next_step);
         }
-        if (next_step < clargs.K)
+        if (next_step < clargs.K) {
+            p.start();
             shift_arrays(); // update arrays
+            get_time(times.shift_arrays, p);
+        }
     } // ENDS STEPS
 }
 

@@ -1,2 +1,0 @@
-#!/bin/bash
-make seqbgp && make ompbgp && make bgpall

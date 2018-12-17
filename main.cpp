@@ -19,27 +19,32 @@ int main(int argc, char **argv)
     }
 
     for (uint i = 0; i < Ns.size(); ++i) {
-        int N = Ns[i];
+        times.clear();
+        Profiler p_finalization;
+        {
+            int N = Ns[i];
 
-        profiler.start();
-        Iterations its(N); // iterations parameters, send/recv buffers
-        its.prepare();
-        if (cnode.mpi.procCount == 1)
+            Profiler p;
+            Iterations its(N); // iterations parameters, send/recv buffers
+            its.prepare();
+            MY_ASSERT(cnode.mpi.procCount == 1);
             its.seqRun();
-        else
-            its.run();
 
-        MPI_Barrier(MPI_COMM_WORLD);
-        profiler.finish();
-        if (cnode.mpi.rank == 0) {
-            int nthread = 1;
-            std::cout << SSTR("###," << cnode.scTag()
-                              << ',' << cnode.mpi.procCount
-                              << ',' << nthread
-                              << ',' << N
-                              << ',' << profiler.time() ) << std::endl;
+            MPI_Barrier(MPI_COMM_WORLD);
+            if (cnode.mpi.rank == 0) {
+                int nthread = 1;
+                std::cout << SSTR("###," << cnode.scTag()
+                                  << ',' << cnode.mpi.procCount
+                                  << ',' << nthread
+                                  << ',' << N
+                                  << ',' << p.time() ) << std::endl;
+            }
+            p_finalization.start();
         }
+        get_time(times.program_finalization, p_finalization);
     }
+
+    cnode.print0(times.get_times());
 
     // Finalize the MPI environment.
     MPI_Finalize();

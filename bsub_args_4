@@ -1,6 +1,0 @@
-. /polusfs/setenv/setup.SMPI
-#BSUB -n 4
-#BSUB -W 00:30
-#BSUB -o t2.%J.out
-#BSUB -e t2.%J.err
-OMP_NUM_THREADS=1 mpiexec ./t2
