@@ -17,7 +17,7 @@ void cuda_resize(RealDVector &dArray,
                  RealDVector &dDeviationsArray,
                  long totalEdgeSize, long bigsize);
 
-real cuda_get_local_avg_deviation(long bigsize, long N, real current_time,
+real cuda_get_local_avg_deviation(long bigsize, long size, real current_time,
                                   RealDVector &dDeviationsArray);
 
 void cuda_step_0(RealDVector &darray, RealDVector &dArrayPP);

@@ -8,6 +8,10 @@
 #include <ctime>
 #include <cstring>
 
+#ifdef CUDA
+#include "cuda_runtime.h"
+#endif
+
 DetailedTimes times;
 CommandLineArgs clargs;
 ComputeNode cnode;
@@ -145,7 +149,14 @@ public:
             clear();
         _started = true;
 
+#ifdef CUDA
+        cudaEventCreate(&_start);
+        cudaEventCreate(&_stop);
+
+        cudaEventRecord(_start, 0);
+#else
         _wstart = MPI_Wtime();
+#endif
     }
 
     void clear()
@@ -157,7 +168,18 @@ public:
     {
         MY_ASSERT(_started);
 
+#ifdef CUDA
+        cudaEventRecord(_stop, 0);
+        cudaEventSynchronize (_stop);
+
+        float elapsed;
+        cudaEventElapsedTime(&elapsed, _start, _stop);
+        _wall_clock_elapsed = elapsed / 1000;
+        cudaEventDestroy(_start);
+        cudaEventDestroy(_stop);
+#else
         _wall_clock_elapsed = MPI_Wtime() - _wstart;
+#endif
     }
 
     void finish()
@@ -185,9 +207,13 @@ public:
 private:
     bool _started;
 
-    double _wstart;
-
     double _wall_clock_elapsed;
+
+#ifdef CUDA
+    cudaEvent_t _start, _stop;
+#else
+    double _wstart;
+#endif
 
     Profiler::Options _opts;
 };

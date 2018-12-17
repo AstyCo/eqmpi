@@ -44,7 +44,7 @@ struct CommandLineArgs
     {
         // default
         K = 20;
-        N = 512;
+        N = 1024;
         deviation = true;
     }
 

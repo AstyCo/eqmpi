@@ -229,7 +229,7 @@ void Iterations::async_recv_all()
 void Iterations::printDeviations(uint n)
 {
     real avgDeviation = cuda_get_local_avg_deviation(bigsize,
-                                                     N,
+                                                     ic * jc * kc,
                                                      time(n),
                                                      dDeviationsArray);
     real globalDeviation = 0;
@@ -308,6 +308,7 @@ void Iterations::fill(const ComputeNode &n)
     // optimization (allocations may throw std::bad_alloc if no enough memory)
     try {
         hArrayBuff.resize(bigsize);
+        MPI_Barrier(MPI_COMM_WORLD);
         cuda_resize(dArray, dArrayP, dArrayPP,
                     dEdgeArray, hEdgeArray,
                     dDeviationsArray,

@@ -110,16 +110,23 @@ void cuda_resize(RealDVector &dArray,
                  long totalEdgeSize,
                  long bigsize)
 {
+    std::cout << "\tbig_size: " << bigsize << std::endl;
+    std::cout << "\tmax real_d_vector_size: " << dArray.max_size() << std::endl;
+    std::cout << "\tmax real_h_vector_size: " << hEdgeArray.max_size() << std::endl;
+
     dArray.resize(bigsize);
     dArrayP.resize(bigsize);
     dArrayPP.resize(bigsize);
 
     dEdgeArray.resize(totalEdgeSize);
+
     hEdgeArray.resize(totalEdgeSize);
 
 
     if (clargs.deviation)
         dDeviationsArray.resize(bigsize);
+
+    std::cout << "allocation success" << std::endl;
 }
 
 struct FDeviation
@@ -147,11 +154,10 @@ struct FDeviation
     }
 };
 
-real cuda_get_local_avg_deviation(long bigsize, long N, real current_time,
+real cuda_get_local_avg_deviation(long bigsize, long size, real current_time,
                                   RealDVector &dDeviationsArray)
 {
     real result = 0;
-    long size = N * N * N;
 
     thrust::counting_iterator<int> first(0);
 

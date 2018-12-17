@@ -2,7 +2,6 @@
 
 #ifdef CUDA
 #include "cuda_runtime.h"
-
 #endif
 
 #ifdef SC_INFO
@@ -83,6 +82,7 @@ int main(int argc, char **argv)
 
         Profiler profiler;
         Iterations its(N); // iterations parameters, send/recv buffers
+        MPI_Barrier(MPI_COMM_WORLD);
 
         its.prepare();
         its.run();
