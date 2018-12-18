@@ -107,7 +107,7 @@ struct DetailedTimes
 
     DetailedTimes();
     void clear();
-    std::string get_times();
+    std::string get_times(long N);
 };
 
 void get_time(double &dest, double &local);

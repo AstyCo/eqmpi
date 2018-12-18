@@ -25,14 +25,14 @@
 #define VAL_LZ (double(M_PI))
 #define VAL_T (0.01)
 
-#define DEBUG
 #ifdef DEBUG
 #define MY_ASSERT(x) if (!(x)) Asserter(__FILE__, __LINE__);
 #define MY_ASSERT_X(x, text) if (!(x)) {cnode.error(text); Asserter(__FILE__, __LINE__);}
 #define CHECK_INDEX(id, first, size) MY_ASSERT_X((id) >= (first) && (id) < (size), SSTR("Id " << id << " First " << first << " Size " << size));
 #else
-#define MY_ASSERT(x) ;
-#define CHECK_INDEX(id, first, size) ;
+#define MY_ASSERT(x)
+#define MY_ASSERT_X(x, text)
+#define CHECK_INDEX(id, first, size)
 #endif
 
 typedef unsigned int uint;
