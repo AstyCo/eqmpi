@@ -45,7 +45,7 @@ struct CommandLineArgs
         // default
         K = 20;
         N = 512;
-        deviation = true;
+        deviation = false;
     }
 
     void parse(int argc_, char **argv_);
@@ -108,7 +108,7 @@ struct DetailedTimes
 
     DetailedTimes();
     void clear();
-    std::string get_times();
+    std::string get_times(long N);
 };
 
 void get_time(double &dest, double &local);

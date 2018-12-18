@@ -182,7 +182,7 @@ real cuda_get_local_avg_deviation(long bigsize, long size, real current_time,
 struct FStep0
 {
     __device__
-    real operator()(int offset) {
+    real operator()(long offset) {
         Index id(offset);
         return phi(x_val(id.i), y_val(id.j), z_val(id.k));
     }
@@ -200,7 +200,7 @@ void cuda_step_0(RealDVector &dArray, RealDVector &dArrayPP)
 struct FStep1
 {
     __device__
-    real operator()(int offset) {
+    real operator()(long offset) {
         Index id(offset);
         return arrPP[offset]
                 + step_t * step_t / 2 * div_grad_phi(x_val(id.i), y_val(id.j), z_val(id.k));
@@ -217,7 +217,7 @@ void cuda_step_1(RealDVector &dArrayP)
 struct FCalculateInner
 {
     __device__
-    void operator()(int offset) {
+    void operator()(long offset) {
         Index id(offset);
         if (id.i < 2 || id.j < 2 || id.k < 2
                 || id.i > i_count - 1
@@ -241,7 +241,7 @@ void cuda_calculate_inner(long bigsize)
 struct FCalculateEdge
 {
     __device__
-    real operator()(int offset) {
+    real operator()(long offset) {
         calculate(offset);
         return arr[offset];
     }

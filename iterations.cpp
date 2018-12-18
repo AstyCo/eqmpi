@@ -340,7 +340,7 @@ void Iterations::fill(const ComputeNode &n)
 }
 
 void Iterations::copy_recv(RealVector &v, RealVector &a,
-                           int i, int j, int k, uint offset)
+                           int i, int j, int k, long offset)
 {
     CHECK_INDEX(offset, 0, v.size());
     CHECK_INDEX(get_index(i, j, k), 0, a.size());
@@ -349,7 +349,7 @@ void Iterations::copy_recv(RealVector &v, RealVector &a,
 }
 
 void Iterations::copy_send(RealVector &v, RealVector &a,
-                           int i, int j, int k, uint offset)
+                           int i, int j, int k, long offset)
 {
     CHECK_INDEX(offset, 0, v.size());
     CHECK_INDEX(get_index(i, j, k), 0, a.size());
@@ -365,7 +365,7 @@ void Iterations::copy_data(Requests &requests, uint id, MPI_OP type)
     ConnectionDirection cdir= requests.iv[id].dir;
     RealVector &v = requests.buffs[id];
 
-    uint offset = 0;
+    long offset = 0;
     switch (cdir) {
     case DIR_X:
     case DIR_MINUS_X:

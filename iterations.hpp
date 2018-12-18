@@ -10,7 +10,7 @@ struct Iterations
 {
     typedef std::vector<real> RealVector;
     typedef void (Iterations::*CopyMFuncPtr)(RealVector &, RealVector &,
-                                             int, int, int, uint);
+                                             int, int, int, long);
     typedef void (Iterations::*IndexesMFuncPtr)(uint, uint, uint);
 
     enum MPI_OP
@@ -100,8 +100,8 @@ struct Iterations
 
     void fill(const ComputeNode &n);
 
-    void copy_recv(RealVector &v, RealVector &a, int i, int j, int k, uint offset);
-    void copy_send(RealVector &v, RealVector &a, int i, int j, int k, uint offset);
+    void copy_recv(RealVector &v, RealVector &a, int i, int j, int k, long offset);
+    void copy_send(RealVector &v, RealVector &a, int i, int j, int k, long offset);
 
     void copy_data(Requests &requests, uint id, MPI_OP type);
 

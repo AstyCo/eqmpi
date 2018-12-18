@@ -307,11 +307,11 @@ void DetailedTimes::clear()
     shift_arrays = 0;
 }
 
-std::string DetailedTimes::get_times()
+std::string DetailedTimes::get_times(long N)
 {
     return SSTR("^^^"
                 << ',' << cnode.mpi.procCount
-                << ',' << clargs.N
+                << ',' << N
                 << ',' << host_device_exchange
                 << ',' << mpi_send_recv
                 << ',' << parallel_cycles

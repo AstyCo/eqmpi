@@ -76,9 +76,10 @@ int main(int argc, char **argv)
     }
 
     for (uint i = 0; i < Ns.size(); ++i) {
+        times.clear();
+        int N = Ns[i];
         Profiler p_finalization;
         {
-            int N = Ns[i];
 
             Profiler profiler;
             Iterations its(N); // iterations parameters, send/recv buffers
@@ -99,9 +100,9 @@ int main(int argc, char **argv)
             p_finalization.start();
         }
         get_time(times.program_finalization, p_finalization);
+        cnode.print0(times.get_times(N));
     }
 
-    cnode.print0(times.get_times());
 
     // Finalize the MPI environment.
     MPI_Finalize();
