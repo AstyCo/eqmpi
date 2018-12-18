@@ -305,20 +305,21 @@ void DetailedTimes::clear()
     host_device_exchange = 0;
     mpi_send_recv = 0;
     shift_arrays = 0;
+    total = 0;
 }
 
 std::string DetailedTimes::get_times(long N)
 {
-    return SSTR("^^^"
+    return SSTR("###"
                 << ',' << cnode.mpi.procCount
                 << ',' << N
                 << ',' << host_device_exchange
                 << ',' << mpi_send_recv
                 << ',' << parallel_cycles
                 << ',' << program_initialization
-                << ',' << allocations
                 << ',' << program_finalization
-                << ',' << shift_arrays);
+                << ',' << shift_arrays
+                << ',' << total);
 }
 
 void get_time(double &dest, double &local)

@@ -89,14 +89,7 @@ int main(int argc, char **argv)
             its.run();
 
             MPI_Barrier(MPI_COMM_WORLD);
-            if (cnode.mpi.rank == 0) {
-                int nthread = 1;
-                std::cout << SSTR("###," << cnode.scTag()
-                                  << ',' << cnode.mpi.procCount
-                                  << ',' << nthread
-                                  << ',' << N
-                                  << ',' << profiler.time() ) << std::endl;
-            }
+            get_time(times.total, profiler);
             p_finalization.start();
         }
         get_time(times.program_finalization, p_finalization);

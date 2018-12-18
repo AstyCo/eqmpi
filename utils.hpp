@@ -44,7 +44,7 @@ struct CommandLineArgs
     {
         // default
         K = 20;
-        N = 512;
+        N = -1;
         deviation = false;
     }
 
@@ -104,6 +104,7 @@ struct DetailedTimes
     double host_device_exchange;
     double mpi_send_recv;
 
+    double total;
     double shift_arrays;
 
     DetailedTimes();
