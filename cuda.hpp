@@ -25,6 +25,8 @@ void cuda_step_1(RealDVector &dArrayP);
 
 void cuda_calculate_inner(long bigsize);
 
+void cuda_copy_from_dvector(LongDVector &dEdgeIndices, RealDVector &dEdgeArray);
+void cuda_copy_to_dvector(LongDVector &dEdgeIndices, RealDVector &dEdgeArray);
 void cuda_calculate_edges(LongDVector &dEdgeIndices, RealDVector &dEdgeArray);
 
 void cuda_shift_arrays(RealDVector &dArray,

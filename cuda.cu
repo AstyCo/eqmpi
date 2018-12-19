@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#define LOAD_CONST_MEM(dest, src)\
+#define HOST_TO_DEV(dest, src)\
     cudaMemcpyToSymbol(dest, &src, sizeof(dest), 0, cudaMemcpyHostToDevice)
 
 __constant__ static int N; /// size of 3D grid
@@ -110,10 +110,6 @@ void cuda_resize(RealDVector &dArray,
                  long totalEdgeSize,
                  long bigsize)
 {
-    std::cout << "\tbig_size: " << bigsize << std::endl;
-    std::cout << "\tmax real_d_vector_size: " << dArray.max_size() << std::endl;
-    std::cout << "\tmax real_h_vector_size: " << hEdgeArray.max_size() << std::endl;
-
     try {
         dArray.resize(bigsize);
         dArrayP.resize(bigsize);
@@ -123,16 +119,13 @@ void cuda_resize(RealDVector &dArray,
 
         hEdgeArray.resize(totalEdgeSize);
 
-
         if (clargs.deviation)
             dDeviationsArray.resize(bigsize);
     }
     catch(...) {
-        std::cerr << "CAUGHT AN EXCEPTION" << std::endl;
+        std::cerr << "CAUGHT AN EXCEPTION ON ALLOCATION" << std::endl;
         MY_ASSERT(false);
     }
-
-    std::cout << "allocation success" << std::endl;
 }
 
 struct FDeviation
@@ -253,6 +246,45 @@ void cuda_calculate_edges(LongDVector &dEdgeIndices, RealDVector &dEdgeArray)
                       dEdgeArray.begin(), FCalculateEdge());
 }
 
+struct FCopyToDVector
+{
+    __device__
+    real operator()(long offset) {
+        return arr[offset];
+    }
+};
+
+
+void cuda_copy_to_dvector(LongDVector &dEdgeIndices, RealDVector &dEdgeArray)
+{
+    thrust::transform(dEdgeIndices.begin(), dEdgeIndices.end(),
+                      dEdgeArray.begin(), FCopyToDVector());
+}
+
+struct FCopyFromDVector
+{
+    const long *indices;
+    real *edge;
+    __host__
+    FCopyFromDVector(const long *indices_,
+                     real *edge_)
+        : indices(indices_), edge(edge_)
+    {}
+    __device__
+    void operator()(long offset) {
+        arr[indices[offset]] = edge[offset];
+    }
+};
+
+
+void cuda_copy_from_dvector(LongDVector &dEdgeIndices, RealDVector &dEdgeArray)
+{
+    thrust::counting_iterator<int> first(0);
+    thrust::for_each_n(first, dEdgeIndices.size(),
+                       FCopyFromDVector(dEdgeIndices.data().get(),
+                                        dEdgeArray.data().get()));
+}
+
 void cuda_shift_arrays(RealDVector &dArray,
                        RealDVector &dArrayP,
                        RealDVector &dArrayPP)
@@ -270,31 +302,31 @@ void cuda_load_const_mem(int N_,
                          RealDVector *arrayP_,
                          RealDVector *arrayPP_)
 {
-    LOAD_CONST_MEM(N, N_);
+    HOST_TO_DEV(N, N_);
 
-    LOAD_CONST_MEM(i_first, i0_);
-    LOAD_CONST_MEM(j_first, j0_);
-    LOAD_CONST_MEM(k_first, k0_);
+    HOST_TO_DEV(i_first, i0_);
+    HOST_TO_DEV(j_first, j0_);
+    HOST_TO_DEV(k_first, k0_);
 
-    LOAD_CONST_MEM(i_count, ic_);
-    LOAD_CONST_MEM(j_count, jc_);
-    LOAD_CONST_MEM(k_count, kc_);
+    HOST_TO_DEV(i_count, ic_);
+    HOST_TO_DEV(j_count, jc_);
+    HOST_TO_DEV(k_count, kc_);
 
-    LOAD_CONST_MEM(step_i, hi_);
-    LOAD_CONST_MEM(step_j, hj_);
-    LOAD_CONST_MEM(step_k, hk_);
+    HOST_TO_DEV(step_i, hi_);
+    HOST_TO_DEV(step_j, hj_);
+    HOST_TO_DEV(step_k, hk_);
 
-    LOAD_CONST_MEM(step_t, ht_);
+    HOST_TO_DEV(step_t, ht_);
 
     const real *arr_ = array_->data().get();
     const real *arrP_ = arrayP_->data().get();
     const real *arrPP_ = arrayPP_->data().get();
-    LOAD_CONST_MEM(arr, arr_);
-    LOAD_CONST_MEM(arrP, arrP_);
-    LOAD_CONST_MEM(arrPP, arrPP_);
+    HOST_TO_DEV(arr, arr_);
+    HOST_TO_DEV(arrP, arrP_);
+    HOST_TO_DEV(arrPP, arrPP_);
 
     real sqrt3_ = sqrt(3.0);
-    LOAD_CONST_MEM(sqrt3, sqrt3_);
+    HOST_TO_DEV(sqrt3, sqrt3_);
 }
 
 

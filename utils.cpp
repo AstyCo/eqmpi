@@ -319,15 +319,57 @@ std::string DetailedTimes::get_times(long N)
                 << ',' << program_initialization
                 << ',' << program_finalization
                 << ',' << shift_arrays
+                << ',' << sum_time()
                 << ',' << total);
+}
+
+void DetailedTimes::reduce()
+{
+    reduce(program_initialization);
+    reduce(allocations);
+    reduce(program_finalization);
+    reduce(parallel_cycles);
+    reduce(host_device_exchange);
+    reduce(mpi_send_recv);
+    reduce(shift_arrays);
+    reduce(total);
+}
+
+void DetailedTimes::reduce(double &var)
+{
+    double global = 0;
+    MPI_Reduce(&var, &global, 1, MPI_DOUBLE,
+               MPI_SUM, 0, MPI_COMM_WORLD);
+    var = global / cnode.mpi.procCount;
+}
+
+//void DetailedTimes::rel()
+//{
+//    sum = sum_time();
+//    double coef = total / sum_time();
+
+//    program_initialization *= coef;
+//    allocations *= coef;
+//    program_finalization *= coef;
+//    parallel_cycles *= coef;
+//    host_device_exchange *= coef;
+//    mpi_send_recv *= coef;
+//    shift_arrays *= coef;
+//}
+
+double DetailedTimes::sum_time() const
+{
+    return program_initialization
+            + program_finalization
+            + parallel_cycles
+            + host_device_exchange
+            + mpi_send_recv
+            + shift_arrays;
 }
 
 void get_time(double &dest, double &local)
 {
-    double global = 0;
-    MPI_Reduce(&local, &global, 1, MPI_DOUBLE,
-               MPI_MAX, 0, MPI_COMM_WORLD);
-    dest += global;
+    dest += local;
 }
 
 void get_time(double &dest, Profiler &p)

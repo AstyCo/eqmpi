@@ -20,19 +20,13 @@ void Iterations::Requests::append(Iterations::Requests::Info info, uint sz)
 Iterations::Iterations(uint N_)
     : N(N_), next_step(0)
 {
-    Profiler p;
     fill(cnode);
-    get_time(times.program_initialization, p);
 }
 
 void Iterations::prepare()
 {
-    Profiler p;
-    {
-        step0();
-        step1();
-    }
-    get_time(times.parallel_cycles, p);
+    step0();
+    step1();
 }
 
 void Iterations::prepareEdgeIndiceArray()
@@ -177,6 +171,7 @@ void Iterations::run()
 
 void Iterations::copy_edges_to_h()
 {
+    cuda_copy_from_dvector(dEdgeIndices, dEdgeArray);
     copy_d_to_h(dEdgeArray, hEdgeArray);
     for (uint i = 0; i < hEdgeIndices.size(); ++i) {
         long offset = hEdgeIndices[i];
@@ -192,6 +187,7 @@ void Iterations::copy_edges_to_d()
     }
 
     copy_h_to_d(hEdgeArray, dEdgeArray);
+    cuda_copy_to_dvector(dEdgeIndices, dEdgeArray);
 }
 
 void Iterations::async_send_all()

@@ -78,22 +78,32 @@ int main(int argc, char **argv)
     for (uint i = 0; i < Ns.size(); ++i) {
         times.clear();
         int N = Ns[i];
+        MPI_Barrier(MPI_COMM_WORLD);
+        Profiler profiler;
         Profiler p_finalization;
         {
 
-            Profiler profiler;
+            Profiler p_init;
             Iterations its(N); // iterations parameters, send/recv buffers
-            MPI_Barrier(MPI_COMM_WORLD);
+            get_time(times.program_initialization, p_init);
 
-            its.prepare();
+            {
+                Profiler p_s0_s1;
+                its.prepare();
+                get_time(times.parallel_cycles, p_s0_s1);
+            }
+
             its.run();
 
             MPI_Barrier(MPI_COMM_WORLD);
-            get_time(times.total, profiler);
             p_finalization.start();
         }
+        get_time(times.total, profiler);
         get_time(times.program_finalization, p_finalization);
-        cnode.print0(times.get_times(N));
+
+        times.reduce();
+        if (cnode.mpi.rank == 0)
+            std::cout << times.get_times(N) << std::endl;
     }
 
 

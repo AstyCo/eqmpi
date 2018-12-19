@@ -104,12 +104,20 @@ struct DetailedTimes
     double host_device_exchange;
     double mpi_send_recv;
 
+//    double sum;
     double total;
     double shift_arrays;
 
     DetailedTimes();
     void clear();
     std::string get_times(long N);
+
+    void reduce();
+    void reduce(double &var);
+
+//    void rel();
+
+    double sum_time() const;
 };
 
 void get_time(double &dest, double &local);
