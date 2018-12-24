@@ -21,37 +21,7 @@ int main(int argc, char **argv)
               << "long size " << sizeof(long) << std::endl;
 
     for (int i = 0; i < dev_count; i++) {
-        cudaDeviceProp prop;
-        cudaGetDeviceProperties(&prop, i);
-        printf("Device Number: %d\n", i);
-        printf("  Device name: %s\n", prop.name);
-        printf("  Memory Clock Rate (KHz): %d\n",
-               prop.memoryClockRate);
-        printf("  Memory Bus Width (bits): %d\n",
-               prop.memoryBusWidth);
-        printf("  Peak Memory Bandwidth (GB/s): %f\n",
-               2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
-        printf("  sharedMemPerBlock (bytes): %lu\n",
-               prop.sharedMemPerBlock);
-        printf("  totalGlobalMem (bytes): %lu\n",
-               prop.totalGlobalMem);
-        printf("  l2CacheSize (bytes): %d\n",
-               prop.l2CacheSize);
-        printf("  maxThreadsPerBlock: %d\n",
-               prop.maxThreadsPerBlock);
-        printf("  maxThreadsDim: %d %d %d\n",
-               prop.maxThreadsDim[0], prop.maxThreadsDim[1],
-               prop.maxThreadsDim[2]);
-        printf("  sharedMemPerMultiprocessor (bytes): %lu\n",
-               prop.sharedMemPerMultiprocessor);
-        printf("  regsPerMultiprocessor (32-bit): %d\n",
-               prop.regsPerMultiprocessor);
-        printf("  maxGridSize: %d %d %d\n",
-               prop.maxGridSize[0], prop.maxGridSize[1],
-               prop.maxGridSize[2]);
-
-
-        printf("\n");
+        print_cuda_params(i);
     }
     return 0;
 }

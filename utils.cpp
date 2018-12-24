@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+#include "cuda_runtime.h"
+
 #include <iostream>
 #include <limits>
 
@@ -53,6 +55,10 @@ void ComputeNode::init()
 
     fillGridDimensions();
     fillXYZ();
+
+
+    cudaGetDeviceCount(&dev_count);
+    cudaSetDevice(world_size % dev_count);
 }
 
 int ComputeNode::neighbor(ConnectionDirection cdir) const
@@ -312,6 +318,7 @@ std::string DetailedTimes::get_times(long N)
 {
     return SSTR("###"
                 << ',' << cnode.mpi.procCount
+                << ',' << cnode.dev_count
                 << ',' << N
                 << ',' << host_device_exchange
                 << ',' << mpi_send_recv
@@ -378,4 +385,38 @@ void get_time(double &dest, Profiler &p)
     get_time(dest, time);
 
     p.start();
+}
+
+void print_cuda_params(int dev_id)
+{
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, dev_id);
+    printf("Device Number: %d\n", dev_id);
+    printf("  Device name: %s\n", prop.name);
+    printf("  Memory Clock Rate (KHz): %d\n",
+           prop.memoryClockRate);
+    printf("  Memory Bus Width (bits): %d\n",
+           prop.memoryBusWidth);
+    printf("  Peak Memory Bandwidth (GB/s): %f\n",
+           2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+    printf("  sharedMemPerBlock (bytes): %lu\n",
+           prop.sharedMemPerBlock);
+    printf("  totalGlobalMem (bytes): %lu\n",
+           prop.totalGlobalMem);
+    printf("  l2CacheSize (bytes): %d\n",
+           prop.l2CacheSize);
+    printf("  maxThreadsPerBlock: %d\n",
+           prop.maxThreadsPerBlock);
+    printf("  maxThreadsDim: %d %d %d\n",
+           prop.maxThreadsDim[0], prop.maxThreadsDim[1],
+           prop.maxThreadsDim[2]);
+    printf("  sharedMemPerMultiprocessor (bytes): %lu\n",
+           prop.sharedMemPerMultiprocessor);
+    printf("  regsPerMultiprocessor (32-bit): %d\n",
+           prop.regsPerMultiprocessor);
+    printf("  maxGridSize: %d %d %d\n",
+           prop.maxGridSize[0], prop.maxGridSize[1],
+           prop.maxGridSize[2]);
+
+    printf("\n");
 }

@@ -3,6 +3,8 @@
 
 #include "globals.hpp"
 
+void print_cuda_params(int dev_id);
+
 void initialize_seed();
 double randomize(double min, double max);
 
@@ -45,7 +47,7 @@ struct CommandLineArgs
         // default
         K = 20;
         N = -1;
-        deviation = false;
+        deviation = true;
     }
 
     void parse(int argc_, char **argv_);
@@ -76,6 +78,8 @@ struct ComputeNode
     int x;
     int y;
     int z;
+
+    int dev_count;
 
     void init();
 

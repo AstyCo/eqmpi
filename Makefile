@@ -24,7 +24,5 @@ subm:
 	bsub <bsub_args_cuda
 	
 all:
-	bsub <bsub_args_cuda
-	bsub <bsub_args_cuda_8
-	bsub <bsub_args_cuda_16
-	bsub <bsub_args_cuda_32
+	bsub <bsub_args
+	bsub <bsub_args_2

@@ -7,6 +7,8 @@
 
 #include <math.h>
 
+#define SC(err) do { if (err != 0) { std::cerr << "ERROR: " << __FILE__ << ':' << __LINE__, cudaGetErrorString(err); exit(1); }} while(false);
+
 #define HOST_TO_DEV(dest, src)\
     cudaMemcpyToSymbol(dest, &src, sizeof(dest), 0, cudaMemcpyHostToDevice)
 
@@ -55,7 +57,7 @@ static real u(real x, real y, real z, real t)
 __device__
 static long get_index(uint i, uint j, uint k)
 {
-    return (long(i + 1) * (j_count + 2) + (j + 1)) * (k_count + 2) + (k + 1);
+    return (long(i) * (j_count + 2) + j) * (k_count + 2) + k;
 }
 
 __device__
@@ -101,6 +103,11 @@ void calculate(long offset)
             );
 }
 
+void allocate(void **arr, long size)
+{
+    SC(cudaMalloc(arr, size * sizeof(real)));
+}
+
 void cuda_resize(RealDVector &dArray,
                  RealDVector &dArrayP,
                  RealDVector &dArrayPP,
@@ -123,8 +130,11 @@ void cuda_resize(RealDVector &dArray,
             dDeviationsArray.resize(bigsize);
     }
     catch(...) {
+        print_cuda_params(0);
+
         std::cerr << "CAUGHT AN EXCEPTION ON ALLOCATION" << std::endl;
         MY_ASSERT(false);
+        exit(1);
     }
 }
 
